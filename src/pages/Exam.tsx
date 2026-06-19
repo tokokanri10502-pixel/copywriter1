@@ -17,6 +17,15 @@ const TRACK_DESC: Record<Track, string> = {
 
 type Phase = 'select' | 'running' | 'done'
 
+function ExamHeader({ name, onLogout }: { name: string; onLogout: () => void }) {
+  return (
+    <div className="topbar">
+      <span className="topbar__name">{name} さん</span>
+      <button className="linkbtn" onClick={onLogout}>ログアウト</button>
+    </div>
+  )
+}
+
 export default function Exam({ user }: { user: AppUser }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [questions, setQuestions] = useState<TodayQuestion[]>([])
@@ -35,6 +44,8 @@ export default function Exam({ user }: { user: AppUser }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const startRef = useRef(Date.now())
+  // 最終問題の提出が始まったら多重実行を防ぐ（タイマー満了/Enter連打対策）。
+  const finalizingRef = useRef(false)
   useEffect(() => {
     if (phase === 'running') startRef.current = Date.now()
   }, [phase, index])
@@ -79,6 +90,7 @@ export default function Exam({ user }: { user: AppUser }) {
   const dayNo = questions[0] ? (questions[0].week - 1) * 5 + questions[0].day : null
 
   function startSet(t: Track) {
+    finalizingRef.current = false
     setTrack(t)
     setIndex(0)
     setInputs(Array(ANSWERS_BY_TRACK[t]).fill(''))
@@ -114,7 +126,7 @@ export default function Exam({ user }: { user: AppUser }) {
   }
 
   function recordAndNext(timedOut: boolean) {
-    if (!current) return
+    if (!current || finalizingRef.current) return
     const joined = inputs.map((s) => s.trim()).filter(Boolean).join('、')
     const draft: AnswerDraft = {
       question_id: current.id,
@@ -129,6 +141,7 @@ export default function Exam({ user }: { user: AppUser }) {
     if (index < trackQuestions.length - 1) {
       setIndex(index + 1)
     } else {
+      finalizingRef.current = true
       void submitSet(next)
     }
   }
@@ -141,13 +154,7 @@ export default function Exam({ user }: { user: AppUser }) {
   async function handleLogout() {
     await signOut()
   }
-
-  const Header = () => (
-    <div className="topbar">
-      <span className="topbar__name">{user.display_name} さん</span>
-      <button className="linkbtn" onClick={handleLogout}>ログアウト</button>
-    </div>
-  )
+  const header = <ExamHeader name={user.display_name} onLogout={handleLogout} />
 
   // ---- 読み込み中 / エラー ----
   if (status === 'loading') {
@@ -156,7 +163,7 @@ export default function Exam({ user }: { user: AppUser }) {
   if (status === 'error') {
     return (
       <div className="page">
-        <Header />
+        {header}
         <div className="card"><p>出題の取得に失敗しました。少し時間をおいて再読み込みしてください。</p></div>
       </div>
     )
@@ -166,7 +173,7 @@ export default function Exam({ user }: { user: AppUser }) {
   if (questions.length === 0) {
     return (
       <div className="page">
-        <Header />
+        {header}
         <div className="card notice">本日は出題日ではありません。次の出題日にまたお越しください。</div>
       </div>
     )
@@ -177,7 +184,7 @@ export default function Exam({ user }: { user: AppUser }) {
     const allDone = (['joshi', 'vocab'] as Track[]).every((t) => doneResults[t])
     return (
       <div className="page">
-        <Header />
+        {header}
         <div className="exam__head exam__head--select">
           <span className="kicker">{dayNo ? `DAY ${dayNo}` : "TODAY'S TRAINING"}</span>
           <h2 className="exam__heading">{dayNo ? `トレーニング${dayNo}日目` : '本日のトレーニング'}</h2>
@@ -221,7 +228,7 @@ export default function Exam({ user }: { user: AppUser }) {
     const graded = results.filter((r) => r.is_correct !== null).length
     return (
       <div className="page">
-        <Header />
+        {header}
         <div className="card done">
           <div className="done__head">
             <span className="done__check" aria-hidden>✓</span>
@@ -295,7 +302,7 @@ export default function Exam({ user }: { user: AppUser }) {
   // ---- 受験画面 ----
   return (
     <div className={`page exam--${track ?? 'joshi'}`}>
-      <Header />
+      {header}
       <div className="exam__head">
         <div className="exam__bar">
           <div className="exam__progress">
