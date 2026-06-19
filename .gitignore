@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# 秘密/ローカル設定は公開しない（キーはビルド時にActionの環境変数で注入）
+.env
+.env.*
+!.env.example
+
+.DS_Store
+Thumbs.db
+*.log
