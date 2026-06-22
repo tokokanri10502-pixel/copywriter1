@@ -1,35 +1,46 @@
 :root {
-  /* base palette */
-  --bg: #eef1f7;
-  --bg-grad-1: #eef2fb;
-  --bg-grad-2: #f6f7fb;
-  --card: #ffffff;
-  --text: #161b26;
-  --muted: #6b7280;
-  --muted-2: #9aa3af;
-  --border: #e6e9ef;
-  --border-strong: #d7dce4;
+  /* ---- editorial palette: 紙と墨 ---- */
+  --paper: #faf7f1;          /* 温かい紙の地色 */
+  --paper-2: #f4efe4;
+  --card: #fffdf8;           /* ほぼ白の紙（わずかに温かい） */
+  --card-2: #fbf8f1;
+  --ink: #211f1b;            /* 墨色（温かい黒） */
+  --ink-soft: #46423a;
+  --muted: #79746a;
+  --muted-2: #a8a293;
+  --rule: #e7e1d3;           /* ヘアライン罫 */
+  --rule-strong: #d8d0bd;
 
-  /* brand / accents */
-  --primary: #4263eb;
-  --primary-dark: #3552d4;
-  --primary-soft: #eef2ff;
-  --joshi: #4263eb;
-  --joshi-soft: #eef2ff;
-  --vocab: #0ca678;
-  --vocab-dark: #099268;
-  --vocab-soft: #e6f7f1;
-  --error: #e03131;
-  --success: #0ca678;
-  --warn: #f08c00;
+  /* ---- accents（トラック識別は踏襲しつつ墨寄りに） ---- */
+  --primary: #3a47a0;        /* 藍（助詞・プライマリ） */
+  --primary-dark: #2e3a86;
+  --primary-soft: #ecedf7;
+  --joshi: #3a47a0;
+  --joshi-soft: #ecedf7;
+  --vocab: #0d8a64;          /* 緑青（語彙） */
+  --vocab-dark: #0a6f51;
+  --vocab-soft: #e4f3ec;
+  --seal: #b3472d;           /* 朱（文芸の差し色・印） */
+  --seal-soft: #f6e9e3;
+  --error: #b3472d;
+  --success: #0d8a64;
+  --warn: #c07d12;
 
-  /* elevation */
-  --shadow-sm: 0 1px 2px rgba(22, 27, 38, 0.04), 0 1px 3px rgba(22, 27, 38, 0.06);
-  --shadow-md: 0 6px 16px rgba(22, 27, 38, 0.08), 0 2px 6px rgba(22, 27, 38, 0.05);
-  --shadow-lg: 0 18px 40px rgba(22, 27, 38, 0.12);
+  /* ---- elevation（紙の影は柔らかく温かく） ---- */
+  --shadow-sm: 0 1px 2px rgba(54, 44, 28, 0.05), 0 1px 3px rgba(54, 44, 28, 0.05);
+  --shadow-md: 0 8px 22px rgba(54, 44, 28, 0.07), 0 2px 6px rgba(54, 44, 28, 0.05);
+  --shadow-lg: 0 22px 50px rgba(54, 44, 28, 0.13);
 
-  --radius-card: 18px;
-  --radius-field: 12px;
+  --radius-card: 14px;
+  --radius-field: 10px;
+
+  /* ---- type ---- */
+  --serif: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho',
+    'Noto Serif JP', serif;
+  --sans: 'Noto Sans JP', 'Inter', system-ui, -apple-system, 'Segoe UI',
+    'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+  --latin: 'Fraunces', 'Shippori Mincho B1', Georgia, serif;
+  --ui: 'Inter', system-ui, sans-serif;
 }
 
 * {
@@ -43,20 +54,29 @@ body {
 }
 
 body {
-  font-family: 'Noto Sans JP', 'Inter', system-ui, -apple-system, 'Segoe UI',
-    'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
-  color: var(--text);
-  background: radial-gradient(1200px 600px at 80% -10%, #e7ecfb 0%, transparent 60%),
-    linear-gradient(180deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%);
-  background-attachment: fixed;
+  font-family: var(--sans);
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: radial-gradient(1100px 720px at 100% -8%, rgba(179, 71, 45, 0.045), transparent 55%),
+    radial-gradient(900px 620px at -8% 6%, rgba(58, 71, 160, 0.05), transparent 52%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+  background-repeat: no-repeat;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 /* ---------- layout ---------- */
 .page {
   min-height: 100vh;
-  padding: 40px 24px;
+  padding: 48px 24px;
 }
 
 .page--center {
@@ -66,20 +86,36 @@ body {
 }
 
 .card {
+  position: relative;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-card);
-  padding: 28px;
+  padding: 30px;
   box-shadow: var(--shadow-md);
 }
 
-.kicker {
-  display: inline-block;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+/* editorial kicker: 罫＋トラッキングした欧文ラベル */
+.kicker,
+.brand-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--ui);
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.18em;
-  color: var(--muted-2);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.kicker::before,
+.brand-kicker::before {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: var(--seal);
+  opacity: 0.7;
 }
 
 .muted {
@@ -88,10 +124,11 @@ body {
 
 /* ---------- buttons & fields ---------- */
 .btn {
-  padding: 13px 18px;
+  padding: 14px 20px;
   font-size: 15px;
   font-weight: 600;
-  font-family: inherit;
+  font-family: var(--sans);
+  letter-spacing: 0.02em;
   border: none;
   border-radius: var(--radius-field);
   cursor: pointer;
@@ -101,11 +138,12 @@ body {
 .btn--primary {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(66, 99, 235, 0.28);
+  box-shadow: 0 8px 18px rgba(58, 71, 160, 0.24);
 }
 
 .btn--primary:hover:not(:disabled) {
   background: var(--primary-dark);
+  box-shadow: 0 10px 22px rgba(58, 71, 160, 0.3);
 }
 
 .btn--primary:active:not(:disabled) {
@@ -113,7 +151,7 @@ body {
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
   box-shadow: none;
 }
@@ -121,23 +159,25 @@ body {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .field__label {
-  font-size: 12.5px;
-  font-weight: 500;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--muted);
-  letter-spacing: 0.02em;
 }
 
 .field__input {
-  padding: 12px 14px;
+  padding: 13px 15px;
   font-size: 16px;
-  font-family: inherit;
-  color: var(--text);
-  background: #fbfcfe;
-  border: 1px solid var(--border-strong);
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--card-2);
+  border: 1px solid var(--rule-strong);
   border-radius: var(--radius-field);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
@@ -146,128 +186,140 @@ body {
 .field__input:focus {
   border-color: var(--primary);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(66, 99, 235, 0.14);
+  box-shadow: 0 0 0 3px rgba(58, 71, 160, 0.13);
 }
 
 /* ---------- login ---------- */
 .login-bg {
-  background: radial-gradient(900px 500px at 50% -20%, rgba(66, 99, 235, 0.12), transparent 60%);
+  background: radial-gradient(900px 520px at 50% -18%, rgba(179, 71, 45, 0.08), transparent 58%);
 }
 
 .login {
   width: 100%;
-  max-width: 380px;
+  max-width: 408px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 36px 32px;
-  border-radius: 22px;
+  padding: 40px 36px 36px;
+  border-radius: 18px;
   box-shadow: var(--shadow-lg);
 }
 
 .login__brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 13px;
 }
 
+/* ブランドマーク: 朱の印（落款）風 */
 .brand-mark {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 20px;
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 22px;
   color: #fff;
-  border-radius: 11px;
-  background: linear-gradient(135deg, #4263eb, #5b7cfa);
-  box-shadow: 0 6px 14px rgba(66, 99, 235, 0.35);
-}
-
-.brand-kicker {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  color: var(--muted-2);
+  border-radius: 9px;
+  background: var(--seal);
+  box-shadow: 0 6px 14px rgba(179, 71, 45, 0.32), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
 
 .login__title {
-  margin: 4px 0 0;
-  font-size: 23px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  margin: 10px 0 0;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.015em;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* タイトル下のヘアライン罫（誌面の見出し罫） */
+.login__title::after {
+  content: '';
+  display: block;
+  width: 46px;
+  height: 2px;
+  margin-top: 16px;
+  background: var(--seal);
 }
 
 .login__subtitle {
-  margin: -10px 0 6px;
-  color: var(--muted);
-  font-size: 14px;
+  margin: 2px 0 8px;
+  font-family: var(--serif);
+  color: var(--ink-soft);
+  font-size: 15px;
+  letter-spacing: 0.03em;
 }
 
 .login__error {
   margin: 0;
-  padding: 10px 12px;
+  padding: 11px 13px;
   font-size: 13.5px;
   color: var(--error);
-  background: #fff0f0;
-  border: 1px solid #ffd7d7;
-  border-radius: 10px;
+  background: var(--seal-soft);
+  border: 1px solid #e8c8bd;
+  border-radius: 9px;
 }
 
 /* ---------- exam: header ---------- */
 .exam__head {
-  max-width: 680px;
-  margin: 0 auto 18px;
+  max-width: 700px;
+  margin: 0 auto 20px;
 }
 
 .exam__head--select {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 22px;
+  gap: 10px;
+  margin-bottom: 26px;
 }
 
 .exam__heading {
   margin: 0;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
 }
 
 .exam__bar {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .exam__progress {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .exam__badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: 10px;
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .exam__badge-icon {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 800;
   color: #fff;
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--accent, var(--primary));
 }
 
 .exam__count {
-  font-size: 15px;
+  font-family: var(--latin);
+  font-size: 17px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -286,17 +338,18 @@ body {
   --accent-soft: var(--vocab-soft);
 }
 
-/* vocab 画面は CTA・フォーカスもアクセント(teal)で統一 */
+/* vocab 画面は CTA・フォーカスもアクセント(緑青)で統一 */
 .exam--vocab .btn--primary {
   background: var(--vocab);
-  box-shadow: 0 6px 16px rgba(12, 166, 120, 0.28);
+  box-shadow: 0 8px 18px rgba(13, 138, 100, 0.24);
 }
 .exam--vocab .btn--primary:hover:not(:disabled) {
   background: var(--vocab-dark);
+  box-shadow: 0 10px 22px rgba(13, 138, 100, 0.3);
 }
 .exam--vocab .field__input:focus {
   border-color: var(--vocab);
-  box-shadow: 0 0 0 3px rgba(12, 166, 120, 0.16);
+  box-shadow: 0 0 0 3px rgba(13, 138, 100, 0.15);
 }
 
 /* step dots */
@@ -307,15 +360,15 @@ body {
 
 .steps__dot {
   flex: 1;
-  height: 6px;
+  height: 5px;
   border-radius: 999px;
-  background: var(--border-strong);
+  background: var(--rule-strong);
   transition: background 0.25s ease;
 }
 
 .steps__dot.is-done {
   background: var(--accent, var(--primary));
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .steps__dot.is-current {
@@ -326,22 +379,22 @@ body {
 .timer {
   display: flex;
   align-items: center;
-  gap: 12px;
-  max-width: 680px;
+  gap: 13px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
 .timer__track {
   flex: 1;
-  height: 8px;
-  background: var(--border-strong);
+  height: 7px;
+  background: var(--rule-strong);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .timer__bar {
   height: 100%;
-  background: var(--warn);
+  background: var(--accent, var(--warn));
   border-radius: 999px;
   transition: width 0.25s linear, background 0.25s ease;
 }
@@ -351,10 +404,11 @@ body {
 }
 
 .timer__num {
-  min-width: 76px;
+  min-width: 78px;
   text-align: right;
+  font-family: var(--latin);
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--muted);
   white-space: nowrap;
@@ -366,15 +420,17 @@ body {
 
 /* ---------- exam: select cards ---------- */
 .notice {
-  max-width: 680px;
-  margin: 0 auto 16px;
-  border-color: #b7e6d4;
-  color: #0b7a59;
+  max-width: 700px;
+  margin: 0 auto 18px;
+  font-family: var(--serif);
+  font-size: 15px;
+  border-color: #bbe0cf;
+  color: var(--vocab-dark);
   background: var(--vocab-soft);
 }
 
 .track-grid {
-  max-width: 680px;
+  max-width: 700px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -388,10 +444,26 @@ body {
   gap: 14px;
   text-align: left;
   cursor: pointer;
+  overflow: hidden;
   border-radius: var(--radius-card);
-  /* 左端のみの縦線ではなく、アクセント色でぐるっと囲む枠線にする */
+  /* アクセント色でぐるっと囲む枠線 */
   border: 1.5px solid var(--accent, var(--primary));
   transition: transform 0.14s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* 背景に大きな明朝の文字を透かしで配置（文芸の誌面感） */
+.track-card::after {
+  content: attr(data-glyph);
+  position: absolute;
+  right: -10px;
+  bottom: -28px;
+  font-family: var(--serif);
+  font-size: 128px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent, var(--primary));
+  opacity: 0.06;
+  pointer-events: none;
 }
 
 .track-card--joshi {
@@ -411,17 +483,19 @@ body {
 
 .track-card:disabled {
   cursor: default;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 .track-card__icon {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  padding: 8px 14px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  padding: 7px 14px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--accent, var(--primary));
   background: var(--accent-soft, var(--primary-soft));
   border-radius: 999px;
@@ -430,24 +504,30 @@ body {
 .track-card__body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .track-card__title {
-  font-size: 17px;
-  font-weight: 700;
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .track-card__desc {
-  font-size: 13px;
-  color: var(--muted);
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.7;
 }
 
 .track-card__meta {
   margin-top: 2px;
-  font-size: 12.5px;
+  font-family: var(--latin);
+  font-size: 13px;
   color: var(--muted-2);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 .track-card__status {
@@ -463,31 +543,37 @@ body {
 
 /* ---------- exam: question ---------- */
 .question {
-  max-width: 680px;
+  max-width: 700px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   border-radius: var(--radius-card);
 }
 
+/* 文脈は引用（プルクオート）として組む */
 .question__context {
+  position: relative;
   margin: 0;
-  padding: 14px 16px 14px 18px;
-  background: var(--accent-soft, #f0f3f8);
+  padding: 16px 18px 16px 22px;
+  background: var(--accent-soft, var(--card-2));
   border-left: 3px solid var(--accent, var(--primary));
-  border-radius: 10px;
-  font-size: 15px;
-  line-height: 1.7;
+  border-radius: 0 8px 8px 0;
+  font-family: var(--serif);
+  font-size: 15.5px;
+  line-height: 1.85;
+  color: var(--ink-soft);
 }
 
 .question__context-label {
   display: inline-block;
   margin-right: 10px;
-  padding: 2px 9px;
-  font-size: 11px;
+  padding: 2px 10px;
+  font-family: var(--ui);
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: #fff;
   background: var(--accent, var(--muted));
   border-radius: 999px;
@@ -496,14 +582,17 @@ body {
 
 .question__prompt {
   margin: 0;
-  font-size: 19px;
-  font-weight: 500;
-  line-height: 1.8;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.9;
+  letter-spacing: 0.02em;
   white-space: pre-wrap;
 }
 
 .question__input {
-  font-size: 18px;
+  font-family: var(--serif);
+  font-size: 19px;
 }
 
 .answers {
@@ -518,25 +607,28 @@ body {
 }
 
 .answers .question__input::placeholder {
-  color: #cbd2db;
+  color: var(--muted-2);
+  font-family: var(--sans);
 }
 
 /* ---------- exam: done ---------- */
 .done {
-  max-width: 680px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
 .done__head {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 6px;
+  gap: 15px;
+  margin-bottom: 8px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .done__check {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   flex: none;
   display: grid;
   place-items: center;
@@ -545,27 +637,29 @@ body {
   color: #fff;
   border-radius: 50%;
   background: var(--success);
-  box-shadow: 0 6px 14px rgba(12, 166, 120, 0.3);
+  box-shadow: 0 6px 14px rgba(13, 138, 100, 0.28);
 }
 
 .done__title {
   margin: 0;
-  font-size: 21px;
-  font-weight: 700;
+  font-size: 23px;
+  font-weight: 800;
 }
 
 .done__sub {
-  margin: 2px 0 0;
-  font-size: 13.5px;
+  margin: 3px 0 0;
+  font-family: var(--latin);
+  font-size: 14px;
+  letter-spacing: 0.02em;
 }
 
 .done__note {
-  margin: 8px 0 16px;
+  margin: 10px 0 16px;
   font-size: 13.5px;
 }
 
 .answer-list {
-  margin: 0 0 22px;
+  margin: 18px 0 22px;
   padding: 0;
   list-style: none;
   display: flex;
@@ -576,7 +670,7 @@ body {
   display: flex;
   gap: 12px;
   padding: 11px 4px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule);
 }
 
 .answer-list li:last-child {
@@ -586,6 +680,7 @@ body {
 .answer-list__q {
   flex: none;
   width: 40px;
+  font-family: var(--latin);
   color: var(--muted-2);
   font-size: 13px;
   font-weight: 600;
@@ -597,37 +692,44 @@ body {
 
 /* ---------- topbar ---------- */
 .topbar {
-  max-width: 680px;
-  margin: 0 auto 18px;
+  max-width: 700px;
+  margin: 0 auto 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .topbar__name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .linkbtn {
   border: none;
   background: none;
   color: var(--muted);
-  font-size: 13px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   cursor: pointer;
   padding: 4px 6px;
 }
 
 .linkbtn:hover {
-  color: var(--primary);
+  color: var(--seal);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ---------- result list ---------- */
 .result-list {
   list-style: none;
-  margin: 4px 0 22px;
+  margin: 18px 0 22px;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -635,39 +737,43 @@ body {
 }
 
 .result {
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule);
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 16px 18px;
+  background: var(--card-2);
 }
 
 .result__head {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .result__q {
-  font-size: 13px;
-  font-weight: 700;
+  font-family: var(--latin);
+  font-size: 14px;
+  font-weight: 600;
   color: var(--muted-2);
 }
 
 .badge {
-  font-size: 12px;
-  font-weight: 700;
-  padding: 2px 10px;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 3px 11px;
   border-radius: 999px;
 }
 
 .badge--ok {
-  color: #0b7a59;
+  color: var(--vocab-dark);
   background: var(--vocab-soft);
 }
 
 .badge--ng {
   color: var(--error);
-  background: #fff0f0;
+  background: var(--seal-soft);
 }
 
 .badge--self {
@@ -676,52 +782,65 @@ body {
 }
 
 .result__context {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
+  font-family: var(--serif);
   font-size: 14px;
   color: var(--muted);
+  line-height: 1.7;
 }
 
 .result__prompt {
-  margin: 0 0 10px;
-  font-size: 15px;
-  font-weight: 500;
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.8;
   white-space: pre-wrap;
 }
 
 .result__row {
   display: flex;
   gap: 12px;
-  margin: 4px 0;
+  margin: 5px 0;
   font-size: 14px;
 }
 
 .result__label {
   flex: none;
   width: 84px;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--muted-2);
+  padding-top: 2px;
 }
 
 /* 正解・模範解答を本人の解答と区別する色分け */
 .ans-joshi {
-  color: #1e3a8a; /* 紺色: 助詞の正解 */
+  color: var(--primary);
+  font-family: var(--serif);
   font-weight: 700;
 }
 .ans-vocab {
-  color: #14532d; /* 深緑: 語彙の模範解答例 */
+  color: var(--vocab-dark);
+  font-family: var(--serif);
   font-weight: 700;
 }
 
 /* 語彙: 模範例との一致数（判定ではなく参考＆励まし） */
 .vocab-match {
-  margin: 8px 0;
-  padding: 8px 12px;
+  margin: 10px 0;
+  padding: 9px 13px;
   font-size: 14px;
-  color: #0b7a59;
+  color: var(--vocab-dark);
   background: var(--vocab-soft);
   border-radius: 8px;
 }
 .vocab-match strong {
-  font-size: 16px;
+  font-family: var(--latin);
+  font-size: 17px;
 }
 
 .drill-back {
@@ -733,18 +852,19 @@ body {
 /* 日タブ（○日目の解答を選ぶ） */
 .day-tabs {
   max-width: 720px;
-  margin: 0 auto 16px;
+  margin: 0 auto 18px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 .day-tab {
-  font-size: 14px;
+  font-family: var(--ui);
+  font-size: 13px;
   font-weight: 600;
-  font-family: inherit;
+  letter-spacing: 0.03em;
   color: var(--muted);
-  background: #fff;
-  border: 1.5px solid var(--border-strong);
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
   border-radius: 999px;
   padding: 7px 16px;
   cursor: pointer;
@@ -762,8 +882,9 @@ body {
 
 /* ---------- dashboard ---------- */
 .dash__sync {
-  margin: 4px 0 0;
-  font-size: 12.5px;
+  margin: 6px 0 0;
+  font-family: var(--latin);
+  font-size: 13px;
 }
 
 .dash-grid {
@@ -777,15 +898,17 @@ body {
 .dash-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
 }
 
 .dash-card__name {
   margin: 0 0 4px;
-  font-size: 18px;
-  font-weight: 700;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .metric {
@@ -807,13 +930,15 @@ body {
 }
 
 .metric__value {
-  font-size: 15px;
+  font-family: var(--latin);
+  font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .metric__unit {
+  font-family: var(--sans);
   font-size: 13px;
   font-weight: 500;
   color: var(--muted);
@@ -826,12 +951,14 @@ body {
 }
 
 .tag-chip {
-  font-size: 13px;
+  font-family: var(--ui);
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.03em;
   color: var(--primary);
   background: var(--primary-soft);
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 4px 11px;
 }
 
 .tag-chip__n {
@@ -842,7 +969,7 @@ body {
 .dash-card__more {
   margin-top: 6px;
   font-size: 14px;
-  padding: 10px 14px;
+  padding: 11px 14px;
 }
 
 /* 日別 正答率の推移（ミニ棒グラフ） */
@@ -862,7 +989,7 @@ body {
 .trend__track {
   width: 16px;
   height: 48px;
-  background: var(--border);
+  background: var(--rule);
   border-radius: 4px;
   display: flex;
   align-items: flex-end;
@@ -876,10 +1003,11 @@ body {
   transition: height 0.3s ease;
 }
 .trend__bar--empty {
-  background: var(--border-strong);
+  background: var(--rule-strong);
   min-height: 0;
 }
 .trend__lbl {
+  font-family: var(--latin);
   font-size: 11px;
   color: var(--muted-2);
   font-variant-numeric: tabular-nums;
@@ -887,7 +1015,7 @@ body {
 
 /* ---------- stub pages ---------- */
 .page > .card:only-child:not(.login) {
-  max-width: 680px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
@@ -896,19 +1024,31 @@ body {
     grid-template-columns: 1fr;
   }
   .page {
-    padding: 28px 16px;
+    padding: 32px 16px;
   }
 }
 
 /* スマホ向け微調整 */
 @media (max-width: 480px) {
   .card {
-    padding: 20px 16px;
+    padding: 22px 18px;
+  }
+  .exam__heading {
+    font-size: 25px;
+  }
+  .question__prompt {
+    font-size: 19px;
+  }
+  .login {
+    padding: 30px 24px;
+  }
+  .login__title {
+    font-size: 24px;
   }
   /* 解答・結果の行はラベルを上、値を下に積む（長文の模範解答も読みやすく） */
   .result__row {
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
   }
   .result__label {
     width: auto;
@@ -919,11 +1059,5 @@ body {
   }
   .metric__value {
     text-align: left;
-  }
-  .exam__heading {
-    font-size: 21px;
-  }
-  .login {
-    padding: 28px 22px;
   }
 }

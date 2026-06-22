@@ -46,7 +46,7 @@ export default function Login() {
           <span className="brand-mark">T</span>
           <span className="brand-kicker">TOKO COPYWRITER</span>
         </div>
-        <h1 className="login__title">コピーライター育成アプリ</h1>
+        <h1 className="login__title">コピーライター<wbr />育成アプリ</h1>
         <p className="login__subtitle">ライティング基礎トレーニング</p>
 
         <label className="field">

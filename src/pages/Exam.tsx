@@ -202,6 +202,7 @@ export default function Exam({ user }: { user: AppUser }) {
               <button
                 key={t}
                 className={`card track-card track-card--${t}`}
+                data-glyph={TRACK_ICON[t]}
                 disabled={count === 0}
                 onClick={() => (done ? viewResults(t) : startSet(t))}
               >
