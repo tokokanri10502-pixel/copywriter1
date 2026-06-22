@@ -104,6 +104,24 @@ export default function Exam({ user }: { user: AppUser }) {
     setPhase('done')
   }
 
+  // もう一度挑戦する: 自分の提出をリセット(reset_set)してからセットを再開。
+  // 上書き方式（最新のみ残す）= リセット→再提出で自然に最新だけになる。
+  async function retrySet(t: Track) {
+    const ids = setFor(t).map((q) => q.id)
+    if (ids.length === 0) return
+    setSubmitting(true)
+    const { error } = await supabase.rpc('reset_set', { p_question_ids: ids })
+    setSubmitting(false)
+    if (error) {
+      setSubmitError(error.message ?? JSON.stringify(error))
+      return
+    }
+    setSubmitError(null)
+    setDoneResults((prev) => ({ ...prev, [t]: null }))
+    setResults([])
+    startSet(t)
+  }
+
   function updateInput(i: number, value: string) {
     setInputs((prev) => prev.map((s, idx) => (idx === i ? value : s)))
   }
@@ -292,9 +310,18 @@ export default function Exam({ user }: { user: AppUser }) {
             ))}
           </ol>
 
-          <button className="btn btn--primary" onClick={() => setPhase('select')}>
-            トラック選択へ戻る
-          </button>
+          <div className="done__actions">
+            <button
+              className="btn btn--primary"
+              onClick={() => track && retrySet(track)}
+              disabled={submitting}
+            >
+              {submitting ? '準備中…' : 'もう一度挑戦する'}
+            </button>
+            <button className="btn btn--ghost" onClick={() => setPhase('select')} disabled={submitting}>
+              トラック選択へ戻る
+            </button>
+          </div>
         </div>
       </div>
     )

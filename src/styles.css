@@ -156,6 +156,18 @@ h3 {
   box-shadow: none;
 }
 
+/* 副ボタン（枠線のみ・墨色） */
+.btn--ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule-strong);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--card-2);
+  border-color: var(--muted-2);
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -656,6 +668,17 @@ h3 {
 .done__note {
   margin: 10px 0 16px;
   font-size: 13.5px;
+}
+
+.done__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.done__actions .btn {
+  flex: 1;
+  min-width: 160px;
 }
 
 .answer-list {
