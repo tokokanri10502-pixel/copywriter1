@@ -451,7 +451,11 @@ export default function Exam({ user }: { user: AppUser }) {
                     recordAndNext(false)
                   }
                 }}
-                placeholder={`言い換え ${i + 1}`}
+                placeholder={
+                  current?.target_word
+                    ? `「${current.target_word}」の言い換え ${i + 1}`
+                    : `言い換え ${i + 1}`
+                }
                 autoFocus={i === 0}
               />
             ))}
