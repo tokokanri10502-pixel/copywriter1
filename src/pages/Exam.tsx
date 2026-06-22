@@ -340,18 +340,9 @@ export default function Exam({ user }: { user: AppUser }) {
             ))}
           </ol>
 
-          <div className="done__actions">
-            <button
-              className="btn btn--primary"
-              onClick={() => track && retrySet(track)}
-              disabled={submitting}
-            >
-              {submitting ? '準備中…' : 'もう一度挑戦する'}
-            </button>
-            <button className="btn btn--ghost" onClick={() => setPhase('select')} disabled={submitting}>
-              トラック選択へ戻る
-            </button>
-          </div>
+          <button className="btn btn--primary" onClick={() => setPhase('select')}>
+            トラック選択へ戻る
+          </button>
         </div>
       </div>
     )
