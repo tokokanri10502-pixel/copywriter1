@@ -248,7 +248,7 @@ h3 {
 
 .login__subtitle {
   margin: 2px 0 8px;
-  font-family: var(--serif);
+  font-family: var(--sans);
   color: var(--ink-soft);
   font-size: 15px;
   letter-spacing: 0.03em;
@@ -422,8 +422,8 @@ h3 {
 .notice {
   max-width: 700px;
   margin: 0 auto 18px;
-  font-family: var(--serif);
-  font-size: 15px;
+  font-family: var(--sans);
+  font-size: 14.5px;
   border-color: #bbe0cf;
   color: var(--vocab-dark);
   background: var(--vocab-soft);
@@ -515,8 +515,8 @@ h3 {
 }
 
 .track-card__desc {
-  font-family: var(--serif);
-  font-size: 14px;
+  font-family: var(--sans);
+  font-size: 13.5px;
   color: var(--ink-soft);
   line-height: 1.7;
 }
@@ -591,8 +591,8 @@ h3 {
 }
 
 .question__input {
-  font-family: var(--serif);
-  font-size: 19px;
+  font-family: var(--sans);
+  font-size: 18px;
 }
 
 .answers {
@@ -702,9 +702,9 @@ h3 {
 }
 
 .topbar__name {
-  font-family: var(--serif);
-  font-size: 15px;
-  font-weight: 700;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -783,8 +783,8 @@ h3 {
 
 .result__context {
   margin: 0 0 8px;
-  font-family: var(--serif);
-  font-size: 14px;
+  font-family: var(--sans);
+  font-size: 13.5px;
   color: var(--muted);
   line-height: 1.7;
 }
@@ -820,13 +820,14 @@ h3 {
 /* 正解・模範解答を本人の解答と区別する色分け */
 .ans-joshi {
   color: var(--primary);
-  font-family: var(--serif);
+  font-family: var(--sans);
   font-weight: 700;
 }
 .ans-vocab {
   color: var(--vocab-dark);
-  font-family: var(--serif);
+  font-family: var(--sans);
   font-weight: 700;
+  line-height: 1.85;
 }
 
 /* 語彙: 模範例との一致数（判定ではなく参考＆励まし） */
