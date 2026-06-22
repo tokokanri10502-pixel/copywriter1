@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Timer from '../components/Timer'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
@@ -16,6 +16,14 @@ const TRACK_DESC: Record<Track, string> = {
 }
 
 type Phase = 'select' | 'running' | 'done'
+
+// テスト用デモ状態（get_demo_state が返す）。available は出題のある通算日番号(1〜10)。
+interface DemoState {
+  demo_mode: boolean
+  week: number
+  day: number
+  available: number[]
+}
 
 function ExamHeader({ name, onLogout }: { name: string; onLogout: () => void }) {
   return (
@@ -42,6 +50,7 @@ export default function Exam({ user }: { user: AppUser }) {
   const [results, setResults] = useState<SetResult[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [demo, setDemo] = useState<DemoState | null>(null)
 
   const startRef = useRef(Date.now())
   // 最終問題の提出が始まったら多重実行を防ぐ（タイマー満了/Enter連打対策）。
@@ -50,60 +59,73 @@ export default function Exam({ user }: { user: AppUser }) {
     if (phase === 'running') startRef.current = Date.now()
   }, [phase, index])
 
-  // 初回: 当日の出題と、自分の既提出結果を「1回のRPC」で読み込む（往復を半分に）。
-  useEffect(() => {
-    let active = true
-    ;(async () => {
-      const { data, error } = await supabase.rpc('get_today_full')
-      if (!active) return
-      if (error) {
-        setStatus('error')
-        return
-      }
-      const rows = (data ?? []) as TodayFullRow[]
+  // 当日の出題＋自分の既提出結果（get_today_full）と、テスト用のデモ状態（get_demo_state）を
+  // 並列で読み込む。日付切替後にも呼ぶので useCallback で再利用する。
+  const load = useCallback(async () => {
+    setStatus('loading')
+    const [today, demoRes] = await Promise.all([
+      supabase.rpc('get_today_full'),
+      supabase.rpc('get_demo_state'),
+    ])
+    if (today.error) {
+      setStatus('error')
+      return
+    }
+    const rows = (today.data ?? []) as TodayFullRow[]
 
-      // 出題リスト（正解抜き）
-      setQuestions(
-        rows.map((r) => ({
-          id: r.id,
+    // 出題リスト（正解抜き）
+    setQuestions(
+      rows.map((r) => ({
+        id: r.id,
+        track: r.track,
+        week: r.week,
+        day: r.day,
+        order_no: r.order_no,
+        prompt: r.prompt,
+        context: r.context,
+        target_word: r.target_word,
+      })),
+    )
+
+    // 既提出のトラックは結果として束ねる（submitted=true の行だけ）
+    const grouped: Record<Track, SetResult[] | null> = { joshi: null, vocab: null }
+    for (const t of ['joshi', 'vocab'] as Track[]) {
+      const done = rows
+        .filter((r) => r.track === t && r.submitted)
+        .map((r) => ({
+          question_id: r.id,
           track: r.track,
-          week: r.week,
-          day: r.day,
           order_no: r.order_no,
           prompt: r.prompt,
           context: r.context,
           target_word: r.target_word,
-        })),
-      )
-
-      // 既提出のトラックは結果として束ねる（submitted=true の行だけ）
-      const grouped: Record<Track, SetResult[] | null> = { joshi: null, vocab: null }
-      for (const t of ['joshi', 'vocab'] as Track[]) {
-        const done = rows
-          .filter((r) => r.track === t && r.submitted)
-          .map((r) => ({
-            question_id: r.id,
-            track: r.track,
-            order_no: r.order_no,
-            prompt: r.prompt,
-            context: r.context,
-            target_word: r.target_word,
-            your_answer: r.your_answer,
-            is_timeout: r.is_timeout,
-            is_correct: r.is_correct,
-            model_answer: r.model_answer,
-            accepted_answers: r.accepted_answers ?? [],
-            scoring_method: r.scoring_method,
-          }))
-        if (done.length > 0) grouped[t] = done
-      }
-      setDoneResults(grouped)
-      setStatus('ready')
-    })()
-    return () => {
-      active = false
+          your_answer: r.your_answer,
+          is_timeout: r.is_timeout,
+          is_correct: r.is_correct,
+          model_answer: r.model_answer,
+          accepted_answers: r.accepted_answers ?? [],
+          scoring_method: r.scoring_method,
+        }))
+      if (done.length > 0) grouped[t] = done
     }
+    setDoneResults(grouped)
+    setDemo((demoRes.data as DemoState | null) ?? null)
+    setStatus('ready')
   }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  // テスト用: 出題日を切り替える（demo_mode 時のみ有効。本番では set_demo_day が no-op）。
+  async function switchDay(n: number) {
+    const week = Math.floor((n - 1) / 5) + 1
+    const day = ((n - 1) % 5) + 1
+    setPhase('select')
+    setTrack(null)
+    await supabase.rpc('set_demo_day', { p_week: week, p_day: day })
+    await load()
+  }
 
   const setFor = (t: Track) => questions.filter((q) => q.track === t).sort((a, b) => a.order_no - b.order_no)
   const trackQuestions = track ? setFor(track) : []
@@ -197,6 +219,26 @@ export default function Exam({ user }: { user: AppUser }) {
   }
   const header = <ExamHeader name={user.display_name} onLogout={handleLogout} />
 
+  // テスト用の出題日スイッチャ（demo_mode 時のみ表示）。本番では demo_mode=false で消える。
+  const demoDayNo = demo ? (demo.week - 1) * 5 + demo.day : null
+  const daySwitcher =
+    demo?.demo_mode && demo.available.length > 0 ? (
+      <div className="demo-switch">
+        <span className="demo-switch__label">テスト：出題日を切り替え</span>
+        <div className="day-tabs">
+          {demo.available.map((n) => (
+            <button
+              key={n}
+              className={'day-tab' + (n === demoDayNo ? ' is-active' : '')}
+              onClick={() => switchDay(n)}
+            >
+              {n}日目
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : null
+
   // ---- 読み込み中 / エラー ----
   if (status === 'loading') {
     return <div className="page page--center"><p className="muted">読み込み中…</p></div>
@@ -215,6 +257,7 @@ export default function Exam({ user }: { user: AppUser }) {
     return (
       <div className="page">
         {header}
+        {daySwitcher}
         <div className="card notice">本日は出題日ではありません。次の出題日にまたお越しください。</div>
       </div>
     )
@@ -226,6 +269,7 @@ export default function Exam({ user }: { user: AppUser }) {
     return (
       <div className="page">
         {header}
+        {daySwitcher}
         <div className="exam__head exam__head--select">
           <span className="kicker">{dayNo ? `DAY ${dayNo}` : "TODAY'S TRAINING"}</span>
           <h2 className="exam__heading">{dayNo ? `トレーニング${dayNo}日目` : '本日のトレーニング'}</h2>

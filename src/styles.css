@@ -915,6 +915,29 @@ h3 {
   border-color: var(--primary);
 }
 
+/* ---------- テスト用 出題日スイッチャ（demo_mode時のみ表示） ---------- */
+.demo-switch {
+  max-width: 700px;
+  margin: 0 auto 18px;
+  padding: 12px 14px 14px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.demo-switch__label {
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+.demo-switch .day-tabs {
+  margin: 0;
+}
+
 /* ---------- dashboard ---------- */
 .dash__sync {
   margin: 6px 0 0;
