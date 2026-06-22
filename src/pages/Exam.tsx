@@ -216,22 +216,52 @@ export default function Exam({ user }: { user: AppUser }) {
           {(['joshi', 'vocab'] as Track[]).map((t) => {
             const count = setFor(t).length
             const done = !!doneResults[t]
-            return (
-              <button
-                key={t}
-                className={`card track-card track-card--${t}`}
-                data-glyph={TRACK_ICON[t]}
-                disabled={count === 0}
-                onClick={() => (done ? viewResults(t) : startSet(t))}
-              >
+            const cardBody = (
+              <>
                 <span className="track-card__icon">{TRACK_ABBR[t]}</span>
                 <span className="track-card__body">
                   <span className="track-card__title">{TRACK_LABEL[t]}</span>
                   <span className="track-card__desc">{TRACK_DESC[t]}</span>
                   <span className="track-card__meta">全 {count} 問 ・ 1問 {SECONDS_BY_TRACK[t]} 秒</span>
                 </span>
-                <span className={'track-card__status' + (done ? ' is-done' : '')}>
-                  {count === 0 ? '— 準備中' : done ? '結果を見る →' : '開始する →'}
+              </>
+            )
+
+            // 完了済み: カードを div にして「解答を見る」「もう一度挑戦する」を並べる
+            // （ボタンの入れ子を避けるため未完了カードとは構造を分ける）。
+            if (done) {
+              return (
+                <div
+                  key={t}
+                  className={`card track-card track-card--${t} track-card--done`}
+                  data-glyph={TRACK_ICON[t]}
+                >
+                  {cardBody}
+                  <span className="track-card__status is-done">提出済み</span>
+                  <div className="track-card__actions">
+                    <button className="btn btn--ghost" onClick={() => viewResults(t)} disabled={submitting}>
+                      解答を見る
+                    </button>
+                    <button className="btn btn--primary" onClick={() => retrySet(t)} disabled={submitting}>
+                      {submitting ? '準備中…' : 'もう一度挑戦する'}
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+
+            // 未完了: カード全体が開始ボタン。
+            return (
+              <button
+                key={t}
+                className={`card track-card track-card--${t}`}
+                data-glyph={TRACK_ICON[t]}
+                disabled={count === 0}
+                onClick={() => startSet(t)}
+              >
+                {cardBody}
+                <span className="track-card__status">
+                  {count === 0 ? '— 準備中' : '開始する →'}
                 </span>
               </button>
             )

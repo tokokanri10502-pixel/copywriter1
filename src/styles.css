@@ -498,6 +498,37 @@ h3 {
   opacity: 0.8;
 }
 
+/* 完了済みカードは div（カード自体は非クリック）。ホバーで浮かせない。 */
+.track-card--done {
+  cursor: default;
+}
+.track-card--done:hover {
+  transform: none;
+  box-shadow: var(--shadow-md);
+}
+
+/* 完了済みカードのアクション（解答を見る / もう一度挑戦する） */
+.track-card__actions {
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.track-card__actions .btn {
+  padding: 11px 14px;
+  font-size: 14px;
+}
+
+/* カードのアクセントに合わせて主ボタンを色分け（語彙=緑青） */
+.track-card--vocab .btn--primary {
+  background: var(--vocab);
+  box-shadow: 0 8px 18px rgba(13, 138, 100, 0.24);
+}
+.track-card--vocab .btn--primary:hover:not(:disabled) {
+  background: var(--vocab-dark);
+}
+
 .track-card__icon {
   align-self: flex-start;
   display: inline-flex;
