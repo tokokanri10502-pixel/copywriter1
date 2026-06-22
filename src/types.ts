@@ -30,6 +30,18 @@ export interface AnswerDraft {
   is_timeout: boolean
 }
 
+// get_today_full が返す1行（出題＋自分の既提出結果を統合）。
+// 未提出なら submitted=false で your_answer 以降は null/'[]'（正解は非開示）。
+export interface TodayFullRow extends TodayQuestion {
+  submitted: boolean
+  your_answer: string | null
+  is_timeout: boolean
+  is_correct: boolean | null
+  model_answer: string | null
+  accepted_answers: string[]
+  scoring_method: string | null
+}
+
 // submit_set / get_results が返す採点済み1問ぶん（提出後に正解・模範解答を開示）。
 export interface SetResult {
   question_id: string

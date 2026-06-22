@@ -3,7 +3,7 @@ import Timer from '../components/Timer'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
-import type { AnswerDraft, AppUser, SetResult, TodayQuestion, Track } from '../types'
+import type { AnswerDraft, AppUser, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
 
 const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, vocab: 60 }
 const ANSWERS_BY_TRACK: Record<Track, number> = { joshi: 1, vocab: 5 }
@@ -50,31 +50,54 @@ export default function Exam({ user }: { user: AppUser }) {
     if (phase === 'running') startRef.current = Date.now()
   }, [phase, index])
 
-  // 初回: 当日の出題と、既提出の結果を読み込む。
+  // 初回: 当日の出題と、自分の既提出結果を「1回のRPC」で読み込む（往復を半分に）。
   useEffect(() => {
     let active = true
     ;(async () => {
-      const { data: qs, error } = await supabase.rpc('get_today')
+      const { data, error } = await supabase.rpc('get_today_full')
       if (!active) return
       if (error) {
         setStatus('error')
         return
       }
-      const list = (qs ?? []) as TodayQuestion[]
-      setQuestions(list)
+      const rows = (data ?? []) as TodayFullRow[]
 
-      const ids = list.map((q) => q.id)
-      if (ids.length) {
-        const { data: res } = await supabase.rpc('get_results', { p_question_ids: ids })
-        if (!active) return
-        const rows = (res ?? []) as SetResult[]
-        const grouped: Record<Track, SetResult[] | null> = { joshi: null, vocab: null }
-        for (const t of ['joshi', 'vocab'] as Track[]) {
-          const r = rows.filter((x) => x.track === t)
-          if (r.length > 0) grouped[t] = r
-        }
-        setDoneResults(grouped)
+      // 出題リスト（正解抜き）
+      setQuestions(
+        rows.map((r) => ({
+          id: r.id,
+          track: r.track,
+          week: r.week,
+          day: r.day,
+          order_no: r.order_no,
+          prompt: r.prompt,
+          context: r.context,
+          target_word: r.target_word,
+        })),
+      )
+
+      // 既提出のトラックは結果として束ねる（submitted=true の行だけ）
+      const grouped: Record<Track, SetResult[] | null> = { joshi: null, vocab: null }
+      for (const t of ['joshi', 'vocab'] as Track[]) {
+        const done = rows
+          .filter((r) => r.track === t && r.submitted)
+          .map((r) => ({
+            question_id: r.id,
+            track: r.track,
+            order_no: r.order_no,
+            prompt: r.prompt,
+            context: r.context,
+            target_word: r.target_word,
+            your_answer: r.your_answer,
+            is_timeout: r.is_timeout,
+            is_correct: r.is_correct,
+            model_answer: r.model_answer,
+            accepted_answers: r.accepted_answers ?? [],
+            scoring_method: r.scoring_method,
+          }))
+        if (done.length > 0) grouped[t] = done
       }
+      setDoneResults(grouped)
       setStatus('ready')
     })()
     return () => {
