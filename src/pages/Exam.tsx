@@ -305,7 +305,7 @@ export default function Exam({ user }: { user: AppUser }) {
           <div className="done__head">
             <span className="done__check" aria-hidden>✓</span>
             <div>
-              <h2 className="done__title">{track && TRACK_LABEL[track]} ・ 結果</h2>
+              <h2 className="done__title">{track && TRACK_LABEL[track]} 結果</h2>
               <p className="done__sub muted">
                 {graded > 0
                   ? `自動採点 ${correct} / ${graded} 問正解`

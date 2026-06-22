@@ -677,6 +677,7 @@ h3 {
   margin: 0;
   font-size: 23px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .done__sub {
@@ -1069,6 +1070,9 @@ h3 {
   }
   .exam__heading {
     font-size: 25px;
+  }
+  .done__title {
+    font-size: 19px;
   }
   .question__prompt {
     font-size: 19px;
