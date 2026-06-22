@@ -32,24 +32,16 @@ export default function Timer({ seconds, resetKey, onExpire }: TimerProps) {
   const low = remaining <= 5
 
   return (
-    <>
-      <div className="timer">
-        <div className="timer__track">
-          <div
-            className={'timer__bar' + (low ? ' timer__bar--low' : '')}
-            style={{ width: pct + '%' }}
-          />
-        </div>
-        <span className={'timer__num' + (low ? ' timer__num--low' : '')}>
-          残り {remaining} 秒
-        </span>
+    <div className="timer">
+      <div className="timer__track">
+        <div
+          className={'timer__bar' + (low ? ' timer__bar--low' : '')}
+          style={{ width: pct + '%' }}
+        />
       </div>
-
-      {/* 携帯で入力中も常に見えるよう、画面に固定で浮かぶ残り秒数（CSSで携帯のみ表示）。 */}
-      <div className={'timer-float' + (low ? ' timer-float--low' : '')} aria-hidden>
-        <span className="timer-float__num">{remaining}</span>
-        <span className="timer-float__unit">秒</span>
-      </div>
-    </>
+      <span className={'timer__num' + (low ? ' timer__num--low' : '')}>
+        残り {remaining} 秒
+      </span>
+    </div>
   )
 }

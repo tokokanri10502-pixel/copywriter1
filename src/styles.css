@@ -420,43 +420,6 @@ h3 {
   color: var(--error);
 }
 
-/* 固定で浮かぶ残り秒数（携帯のみ表示。入力中・スクロール中も常に見える） */
-.timer-float {
-  display: none;
-}
-
-@media (max-width: 560px) {
-  .timer-float {
-    position: fixed;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 50;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 3px;
-    padding: 7px 16px;
-    border-radius: 999px;
-    background: var(--accent, var(--primary));
-    color: #fff;
-    box-shadow: var(--shadow-md);
-    font-family: var(--latin);
-    font-variant-numeric: tabular-nums;
-    pointer-events: none;
-  }
-  .timer-float__num {
-    font-size: 19px;
-    font-weight: 600;
-    line-height: 1;
-  }
-  .timer-float__unit {
-    font-size: 12px;
-  }
-  .timer-float--low {
-    background: var(--error);
-  }
-}
-
 /* ---------- exam: select cards ---------- */
 .notice {
   max-width: 700px;

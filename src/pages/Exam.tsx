@@ -401,11 +401,6 @@ export default function Exam({ user }: { user: AppUser }) {
             ))}
           </div>
         </div>
-        <Timer
-          seconds={track ? SECONDS_BY_TRACK[track] : 30}
-          resetKey={current?.id ?? index}
-          onExpire={() => recordAndNext(true)}
-        />
       </div>
 
       <form className="card question" onSubmit={handleSubmit}>
@@ -416,6 +411,14 @@ export default function Exam({ user }: { user: AppUser }) {
           </p>
         )}
         <p className="question__prompt">{current?.prompt}</p>
+
+        {/* タイマーは入力欄の真上（通常フロー内）に置く。iOS Safari は keyboard 表示中に
+            position:fixed が表示領域へ追従しないため、入力欄の近くに置いて常に見えるようにする。 */}
+        <Timer
+          seconds={track ? SECONDS_BY_TRACK[track] : 30}
+          resetKey={current?.id ?? index}
+          onExpire={() => recordAndNext(true)}
+        />
 
         {answerCount === 1 ? (
           <input
