@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
@@ -183,8 +184,9 @@ export default function Dashboard({ user }: { user: AppUser }) {
     <div className="page">
       <div className="topbar">
         <span className="topbar__name">{user.display_name} さん（上長）</span>
-        <span>
+        <span className="topbar__actions">
           <button className="linkbtn" onClick={() => reload()}>更新</button>
+          <Link className="guide-btn" to="/guide">📖 てにをはガイド</Link>
           <button className="linkbtn" onClick={() => signOut()}>ログアウト</button>
         </span>
       </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Timer from '../components/Timer'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
@@ -29,7 +30,10 @@ function ExamHeader({ name, onLogout }: { name: string; onLogout: () => void }) 
   return (
     <div className="topbar">
       <span className="topbar__name">{name} さん</span>
-      <button className="linkbtn" onClick={onLogout}>ログアウト</button>
+      <span className="topbar__actions">
+        <Link className="guide-btn" to="/guide">📖 てにをはガイド</Link>
+        <button className="linkbtn" onClick={onLogout}>ログアウト</button>
+      </span>
     </div>
   )
 }

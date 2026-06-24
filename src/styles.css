@@ -760,6 +760,92 @@ h3 {
   text-underline-offset: 3px;
 }
 
+.topbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* てにをはガイド ボタン（藍＝助詞アクセント） */
+.guide-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+  background: var(--joshi);
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+.guide-btn:hover {
+  background: var(--primary-dark);
+}
+
+/* ---------- てにをは ガイドページ ---------- */
+.guide {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.guide__intro {
+  font-size: 15px;
+  line-height: 1.95;
+}
+.guide__section {
+  margin: 28px 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--serif);
+}
+.guide__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+.guide__particle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-left: 4px solid var(--joshi);
+}
+.guide__p {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--joshi);
+  font-family: var(--serif);
+}
+.guide__role {
+  font-size: 13px;
+  color: var(--muted);
+}
+.guide__ex {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.guide__pitfalls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.guide__pitfall-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.guide__pitfall-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--ink-soft);
+}
+
 /* ---------- result list ---------- */
 .result-list {
   list-style: none;

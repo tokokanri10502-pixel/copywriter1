@@ -3,6 +3,7 @@ import Login from './pages/Login'
 import Exam from './pages/Exam'
 import Review from './pages/Review'
 import Dashboard from './pages/Dashboard'
+import Guide from './pages/Guide'
 import { homePathFor, useSession } from './lib/useSession'
 
 export default function App() {
@@ -33,6 +34,10 @@ export default function App() {
       <Route
         path="/dashboard"
         element={user?.role === 'manager' ? <Dashboard user={user} /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/guide"
+        element={user ? <Guide user={user} /> : <Navigate to="/login" replace />}
       />
       <Route path="*" element={<Navigate to={user ? homePathFor(user) : '/login'} replace />} />
     </Routes>
