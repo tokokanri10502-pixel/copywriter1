@@ -136,6 +136,24 @@ export default function Exam({ user }: { user: AppUser }) {
     await load(n)
   }
 
+  // テスト用オールクリア: 自分の全提出を削除して最初からやり直す（demo_mode のみ有効）。
+  async function resetAll() {
+    if (!window.confirm('テスト用：あなたの全ての解答を消去して最初からやり直します。よろしいですか？')) {
+      return
+    }
+    setSubmitting(true)
+    const { error } = await supabase.rpc('reset_all')
+    setSubmitting(false)
+    if (error) {
+      setSubmitError(error.message ?? JSON.stringify(error))
+      return
+    }
+    setSubmitError(null)
+    setPhase('select')
+    setTrack(null)
+    await load(selectedDay ?? undefined)
+  }
+
   const setFor = (t: Track) => questions.filter((q) => q.track === t).sort((a, b) => a.order_no - b.order_no)
   const trackQuestions = track ? setFor(track) : []
   const current = trackQuestions[index]
@@ -245,6 +263,11 @@ export default function Exam({ user }: { user: AppUser }) {
               {n}日目
             </button>
           ))}
+          {demo.demo_mode && (
+            <button className="day-tab day-tab--reset" onClick={resetAll} disabled={submitting}>
+              オールクリア
+            </button>
+          )}
         </div>
       </div>
     ) : null

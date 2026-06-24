@@ -1000,6 +1000,16 @@ h3 {
   background: var(--primary);
   border-color: var(--primary);
 }
+.day-tab--reset {
+  color: var(--seal);
+  border-color: var(--seal);
+  border-style: dashed;
+}
+.day-tab--reset:hover {
+  color: #fff;
+  background: var(--seal);
+  border-color: var(--seal);
+}
 
 /* ---------- テスト用 出題日スイッチャ（demo_mode時のみ表示） ---------- */
 .demo-switch {
