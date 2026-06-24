@@ -18,11 +18,11 @@ const TRACK_DESC: Record<Track, string> = {
 
 type Phase = 'select' | 'running' | 'done'
 
-// テスト用デモ状態（get_demo_state が返す）。available は出題のある通算日番号(1〜10)。
-interface DemoState {
+// 出題日ナビ状態（get_demo_state が返す）。
+//   current = 現在の通算日番号 / available = 選択可能な通算日（本番は過去〜当日のみ）。
+interface NavState {
   demo_mode: boolean
-  week: number
-  day: number
+  current: number | null
   available: number[]
 }
 
@@ -54,7 +54,8 @@ export default function Exam({ user }: { user: AppUser }) {
   const [results, setResults] = useState<SetResult[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [demo, setDemo] = useState<DemoState | null>(null)
+  const [demo, setDemo] = useState<NavState | null>(null)
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
 
   const startRef = useRef(Date.now())
   // 最終問題の提出が始まったら多重実行を防ぐ（タイマー満了/Enter連打対策）。
@@ -65,10 +66,12 @@ export default function Exam({ user }: { user: AppUser }) {
 
   // 当日の出題＋自分の既提出結果（get_today_full）と、テスト用のデモ状態（get_demo_state）を
   // 並列で読み込む。日付切替後にも呼ぶので useCallback で再利用する。
-  const load = useCallback(async () => {
+  const load = useCallback(async (day?: number) => {
     setStatus('loading')
-    const [today, demoRes] = await Promise.all([
-      supabase.rpc('get_today_full'),
+    const [today, navRes] = await Promise.all([
+      day != null
+        ? supabase.rpc('get_today_full', { p_day: day })
+        : supabase.rpc('get_today_full'),
       supabase.rpc('get_demo_state'),
     ])
     if (today.error) {
@@ -113,7 +116,10 @@ export default function Exam({ user }: { user: AppUser }) {
       if (done.length > 0) grouped[t] = done
     }
     setDoneResults(grouped)
-    setDemo((demoRes.data as DemoState | null) ?? null)
+    const nav = (navRes.data as NavState | null) ?? null
+    setDemo(nav)
+    // 初回ロード時は現在日を選択状態にする（切替時は呼び出し側で設定済み）。
+    if (day == null) setSelectedDay(nav?.current ?? null)
     setStatus('ready')
   }, [])
 
@@ -121,14 +127,13 @@ export default function Exam({ user }: { user: AppUser }) {
     void load()
   }, [load])
 
-  // テスト用: 出題日を切り替える（demo_mode 時のみ有効。本番では set_demo_day が no-op）。
+  // 出題日を切り替える（本番でも有効。過去〜当日を復習・再挑戦できる）。
+  // 日指定で get_today_full(p_day) を取り直す。未来日はサーバ側で弾かれる。
   async function switchDay(n: number) {
-    const week = Math.floor((n - 1) / 5) + 1
-    const day = ((n - 1) % 5) + 1
     setPhase('select')
     setTrack(null)
-    await supabase.rpc('set_demo_day', { p_week: week, p_day: day })
-    await load()
+    setSelectedDay(n)
+    await load(n)
   }
 
   const setFor = (t: Track) => questions.filter((q) => q.track === t).sort((a, b) => a.order_no - b.order_no)
@@ -223,17 +228,18 @@ export default function Exam({ user }: { user: AppUser }) {
   }
   const header = <ExamHeader name={user.display_name} onLogout={handleLogout} />
 
-  // テスト用の出題日スイッチャ（demo_mode 時のみ表示）。本番では demo_mode=false で消える。
-  const demoDayNo = demo ? (demo.week - 1) * 5 + demo.day : null
+  // 出題日スイッチャ。選択できる日が2つ以上あるとき表示（本番でも過去〜当日を切替可）。
   const daySwitcher =
-    demo?.demo_mode && demo.available.length > 0 ? (
+    demo && demo.available.length > 1 ? (
       <div className="demo-switch">
-        <span className="demo-switch__label">テスト：出題日を切り替え</span>
+        <span className="demo-switch__label">
+          {demo.demo_mode ? 'テスト：出題日を切り替え' : '出題日（過去分も復習できます）'}
+        </span>
         <div className="day-tabs">
           {demo.available.map((n) => (
             <button
               key={n}
-              className={'day-tab' + (n === demoDayNo ? ' is-active' : '')}
+              className={'day-tab' + (n === selectedDay ? ' is-active' : '')}
               onClick={() => switchDay(n)}
             >
               {n}日目
