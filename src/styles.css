@@ -1320,4 +1320,22 @@ h3 {
   .metric__value {
     text-align: left;
   }
+  /* 花火演出：狭い画面では見出しと余白を詰める */
+  .celebrate__card {
+    padding: 24px 20px 22px;
+  }
+  .celebrate__title {
+    font-size: 32px;
+  }
+  .celebrate__line {
+    font-size: 14px;
+  }
+  .celebrate__spark {
+    font-size: 34px;
+  }
+  /* 出題日の範囲タブも小さめに */
+  .decade-tab {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
 }
