@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Timer from '../components/Timer'
+import Celebration from '../components/Celebration'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
@@ -59,6 +60,8 @@ export default function Exam({ user }: { user: AppUser }) {
   // 出題日が多いとき、10日ごと（1〜10 / 11〜20 …）に畳んで表示する。
   // 開いている範囲の先頭日番号（1, 11, 21 …）。null のときは選択中の日の範囲を開く。
   const [openDecade, setOpenDecade] = useState<number | null>(null)
+  // 5日刻みの節目（通算5・10・15…）を達成した瞬間に花火演出を出す。表示中の通算日を保持。
+  const [celebrateDay, setCelebrateDay] = useState<number | null>(null)
 
   const startRef = useRef(Date.now())
   // 最終問題の提出が始まったら多重実行を防ぐ（タイマー満了/Enter連打対策）。
@@ -213,7 +216,13 @@ export default function Exam({ user }: { user: AppUser }) {
     } else {
       setSubmitError(null)
       setResults(rows)
-      if (track) setDoneResults((prev) => ({ ...prev, [track]: rows.filter((r) => r.track === track) }))
+      if (track) {
+        const nextDone = { ...doneResults, [track]: rows.filter((r) => r.track === track) }
+        setDoneResults(nextDone)
+        // この提出で当日の両トラックが揃い、かつ通算日が5の倍数なら節目の演出を出す。
+        const bothDone = !!nextDone.joshi && !!nextDone.vocab
+        if (bothDone && dayNo != null && dayNo % 5 === 0) setCelebrateDay(dayNo)
+      }
     }
     setPhase('done')
   }
@@ -411,6 +420,9 @@ export default function Exam({ user }: { user: AppUser }) {
     return (
       <div className="page">
         {header}
+        {celebrateDay != null && (
+          <Celebration day={celebrateDay} onClose={() => setCelebrateDay(null)} />
+        )}
         <div className="card done">
           <div className="done__head">
             <span className="done__check" aria-hidden>✓</span>

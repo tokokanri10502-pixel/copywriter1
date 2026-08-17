@@ -1011,6 +1011,78 @@ h3 {
   border-color: var(--seal);
 }
 
+/* ---------- 5日刻みの節目 花火演出 ---------- */
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 16, 12, 0.72);
+  backdrop-filter: blur(2px);
+  animation: celebrate-fade 0.3s ease;
+  cursor: pointer;
+}
+.celebrate__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.celebrate__card {
+  position: relative;
+  z-index: 1;
+  max-width: 460px;
+  width: calc(100% - 40px);
+  padding: 30px 28px 26px;
+  text-align: center;
+  background: var(--paper);
+  border: 1px solid var(--rule-strong);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  cursor: default;
+  animation: celebrate-pop 0.42s cubic-bezier(0.2, 1.2, 0.3, 1);
+}
+.celebrate__spark {
+  font-size: 40px;
+  line-height: 1;
+}
+.celebrate__title {
+  margin: 8px 0 0;
+  font-family: var(--latin);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--seal);
+}
+.celebrate__line {
+  margin: 12px auto 0;
+  max-width: 34ch;
+  font-family: var(--ui);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.celebrate__day {
+  margin: 14px 0 20px;
+  font-family: var(--serif);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.celebrate__btn {
+  min-width: 160px;
+}
+@keyframes celebrate-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes celebrate-pop {
+  0% { transform: scale(0.8) translateY(10px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
 /* 出題日を10日ごとにまとめる範囲タブ（1〜10 / 11〜20 …） */
 .decade-tabs {
   max-width: 720px;
