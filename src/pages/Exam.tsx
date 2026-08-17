@@ -56,6 +56,9 @@ export default function Exam({ user }: { user: AppUser }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [demo, setDemo] = useState<NavState | null>(null)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  // 出題日が多いとき、10日ごと（1〜10 / 11〜20 …）に畳んで表示する。
+  // 開いている範囲の先頭日番号（1, 11, 21 …）。null のときは選択中の日の範囲を開く。
+  const [openDecade, setOpenDecade] = useState<number | null>(null)
 
   const startRef = useRef(Date.now())
   // 最終問題の提出が始まったら多重実行を防ぐ（タイマー満了/Enter連打対策）。
@@ -247,14 +250,43 @@ export default function Exam({ user }: { user: AppUser }) {
   const header = <ExamHeader name={user.display_name} onLogout={handleLogout} />
 
   // 出題日スイッチャ。選択できる日が2つ以上あるとき表示（本番でも過去〜当日を切替可）。
-  const daySwitcher =
-    demo && demo.available.length > 1 ? (
+  // 日数が10を超えたら 10日ごと（1〜10 / 11〜20 …）にまとめ、選んだ範囲の日だけを開く。
+  const daySwitcher = (() => {
+    if (!demo || demo.available.length <= 1) return null
+    const days = demo.available
+    const decadeOf = (n: number) => Math.floor((n - 1) / 10) * 10 + 1
+    const decadeStarts = Array.from(new Set(days.map(decadeOf))).sort((a, b) => a - b)
+    const grouped = decadeStarts.length > 1
+    // 開く範囲: ユーザーが選んだ範囲があればそれ、なければ選択中の日（＝当日）の範囲。
+    const activeDecade =
+      openDecade != null && decadeStarts.includes(openDecade)
+        ? openDecade
+        : decadeOf(selectedDay ?? demo.current ?? days[0])
+    const shownDays = grouped ? days.filter((n) => decadeOf(n) === activeDecade) : days
+    const decadeLabel = (start: number) => {
+      const end = Math.max(...days.filter((n) => decadeOf(n) === start))
+      return start === end ? `${start}日目` : `${start}〜${end}`
+    }
+    return (
       <div className="demo-switch">
         <span className="demo-switch__label">
           {demo.demo_mode ? 'テスト：出題日を切り替え' : '出題日（過去分も復習できます）'}
         </span>
+        {grouped && (
+          <div className="decade-tabs">
+            {decadeStarts.map((start) => (
+              <button
+                key={start}
+                className={'decade-tab' + (start === activeDecade ? ' is-active' : '')}
+                onClick={() => setOpenDecade(start)}
+              >
+                {decadeLabel(start)}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="day-tabs">
-          {demo.available.map((n) => (
+          {shownDays.map((n) => (
             <button
               key={n}
               className={'day-tab' + (n === selectedDay ? ' is-active' : '')}
@@ -270,7 +302,8 @@ export default function Exam({ user }: { user: AppUser }) {
           )}
         </div>
       </div>
-    ) : null
+    )
+  })()
 
   // ---- 読み込み中 / エラー ----
   if (status === 'loading') {

@@ -1011,6 +1011,37 @@ h3 {
   border-color: var(--seal);
 }
 
+/* 出題日を10日ごとにまとめる範囲タブ（1〜10 / 11〜20 …） */
+.decade-tabs {
+  max-width: 720px;
+  margin: 0 auto 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.decade-tab {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  background: var(--card-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.decade-tab:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.decade-tab.is-active {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 /* ---------- テスト用 出題日スイッチャ（demo_mode時のみ表示） ---------- */
 .demo-switch {
   max-width: 700px;
