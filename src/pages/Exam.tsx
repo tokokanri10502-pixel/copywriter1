@@ -5,17 +5,25 @@ import Celebration from '../components/Celebration'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
+import { parsePicks, picksToText } from '../lib/sentence'
 import type { AnswerDraft, AppUser, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
 
-const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, vocab: 60 }
-const ANSWERS_BY_TRACK: Record<Track, number> = { joshi: 1, vocab: 5 }
-const TRACK_LABEL: Record<Track, string> = { joshi: '助詞トレーニング', vocab: '語彙トレーニング' }
-const TRACK_ICON: Record<Track, string> = { joshi: '助', vocab: '語' }
-const TRACK_ABBR: Record<Track, string> = { joshi: '助詞トレ', vocab: '語彙トレ' }
+const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, sentence: 60, vocab: 60 }
+const ANSWERS_BY_TRACK: Record<Track, number> = { joshi: 1, sentence: 1, vocab: 5 }
+const TRACK_LABEL: Record<Track, string> = {
+  joshi: '助詞トレーニング',
+  sentence: '文章判定トレーニング',
+  vocab: '語彙トレーニング',
+}
+const TRACK_ICON: Record<Track, string> = { joshi: '助', sentence: '文', vocab: '語' }
+const TRACK_ABBR: Record<Track, string> = { joshi: '助詞トレ', sentence: '文章判定', vocab: '語彙トレ' }
 const TRACK_DESC: Record<Track, string> = {
   joshi: 'てにをはを正確に運用する',
+  sentence: '適切な文を見分ける（複数選択）',
   vocab: '言い換え・連想で語彙を広げる',
 }
+// トラックの並び順（1日の出題は「助詞 or 文章」＋語彙）。
+const TRACK_ORDER: Track[] = ['joshi', 'sentence', 'vocab']
 
 type Phase = 'select' | 'running' | 'done'
 
@@ -44,6 +52,7 @@ export default function Exam({ user }: { user: AppUser }) {
   const [questions, setQuestions] = useState<TodayQuestion[]>([])
   const [doneResults, setDoneResults] = useState<Record<Track, SetResult[] | null>>({
     joshi: null,
+    sentence: null,
     vocab: null,
   })
 
@@ -51,6 +60,8 @@ export default function Exam({ user }: { user: AppUser }) {
   const [track, setTrack] = useState<Track | null>(null)
   const [index, setIndex] = useState(0)
   const [inputs, setInputs] = useState<string[]>([''])
+  // 文章判定（選択式）で選んだ選択肢番号。設問ごとにリセットする。
+  const [picked, setPicked] = useState<number[]>([])
   const [runAnswers, setRunAnswers] = useState<AnswerDraft[]>([])
   const [results, setResults] = useState<SetResult[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -97,12 +108,13 @@ export default function Exam({ user }: { user: AppUser }) {
         prompt: r.prompt,
         context: r.context,
         target_word: r.target_word,
+        options: r.options ?? null,
       })),
     )
 
     // 既提出のトラックは結果として束ねる（submitted=true の行だけ）
-    const grouped: Record<Track, SetResult[] | null> = { joshi: null, vocab: null }
-    for (const t of ['joshi', 'vocab'] as Track[]) {
+    const grouped: Record<Track, SetResult[] | null> = { joshi: null, sentence: null, vocab: null }
+    for (const t of TRACK_ORDER) {
       const done = rows
         .filter((r) => r.track === t && r.submitted)
         .map((r) => ({
@@ -118,6 +130,7 @@ export default function Exam({ user }: { user: AppUser }) {
           model_answer: r.model_answer,
           accepted_answers: r.accepted_answers ?? [],
           scoring_method: r.scoring_method,
+          options: r.options ?? null,
         }))
       if (done.length > 0) grouped[t] = done
     }
@@ -164,6 +177,8 @@ export default function Exam({ user }: { user: AppUser }) {
   const trackQuestions = track ? setFor(track) : []
   const current = trackQuestions[index]
   const answerCount = track ? ANSWERS_BY_TRACK[track] : 1
+  // その日に含まれるトラック（助詞 or 文章 ＋ 語彙）を出題から判定。
+  const presentTracks = TRACK_ORDER.filter((t) => questions.some((q) => q.track === t))
   // 通算の日番号（週1日1=1日目 … 週2日5=10日目）。当日の出題から算出。
   const dayNo = questions[0] ? (questions[0].week - 1) * 5 + questions[0].day : null
 
@@ -172,6 +187,7 @@ export default function Exam({ user }: { user: AppUser }) {
     setTrack(t)
     setIndex(0)
     setInputs(Array(ANSWERS_BY_TRACK[t]).fill(''))
+    setPicked([])
     setRunAnswers([])
     setPhase('running')
   }
@@ -204,6 +220,11 @@ export default function Exam({ user }: { user: AppUser }) {
     setInputs((prev) => prev.map((s, idx) => (idx === i ? value : s)))
   }
 
+  // 文章判定の選択肢トグル。
+  function togglePick(no: number) {
+    setPicked((prev) => (prev.includes(no) ? prev.filter((n) => n !== no) : [...prev, no]))
+  }
+
   async function submitSet(answers: AnswerDraft[]) {
     setSubmitting(true)
     const { data, error } = await supabase.rpc('submit_set', { p_answers: answers })
@@ -219,9 +240,9 @@ export default function Exam({ user }: { user: AppUser }) {
       if (track) {
         const nextDone = { ...doneResults, [track]: rows.filter((r) => r.track === track) }
         setDoneResults(nextDone)
-        // この提出で当日の両トラックが揃い、かつ通算日が5の倍数なら節目の演出を出す。
-        const bothDone = !!nextDone.joshi && !!nextDone.vocab
-        if (bothDone && dayNo != null && dayNo % 5 === 0) setCelebrateDay(dayNo)
+        // この提出で当日の全トラックが揃い、かつ通算日が5の倍数なら節目の演出を出す。
+        const allDone = presentTracks.every((t) => nextDone[t])
+        if (allDone && dayNo != null && dayNo % 5 === 0) setCelebrateDay(dayNo)
       }
     }
     setPhase('done')
@@ -229,16 +250,19 @@ export default function Exam({ user }: { user: AppUser }) {
 
   function recordAndNext(timedOut: boolean) {
     if (!current || finalizingRef.current) return
-    const joined = inputs.map((s) => s.trim()).filter(Boolean).join('、')
+    // 文章判定は選んだ番号（"3,4"）、それ以外は入力欄を「、」連結。
+    const answerText =
+      track === 'sentence' ? picksToText(picked) : inputs.map((s) => s.trim()).filter(Boolean).join('、')
     const draft: AnswerDraft = {
       question_id: current.id,
-      answer_text: timedOut ? '' : joined,
+      answer_text: timedOut ? '' : answerText,
       elapsed_ms: Date.now() - startRef.current,
       is_timeout: timedOut,
     }
     const next = [...runAnswers, draft]
     setRunAnswers(next)
     setInputs(Array(answerCount).fill(''))
+    setPicked([])
 
     if (index < trackQuestions.length - 1) {
       setIndex(index + 1)
@@ -340,7 +364,7 @@ export default function Exam({ user }: { user: AppUser }) {
 
   // ---- 選択画面 ----
   if (phase === 'select') {
-    const allDone = (['joshi', 'vocab'] as Track[]).every((t) => doneResults[t])
+    const allDone = presentTracks.every((t) => doneResults[t])
     return (
       <div className="page">
         {header}
@@ -355,7 +379,7 @@ export default function Exam({ user }: { user: AppUser }) {
         )}
 
         <div className="track-grid">
-          {(['joshi', 'vocab'] as Track[]).map((t) => {
+          {presentTracks.map((t) => {
             const count = setFor(t).length
             const done = !!doneResults[t]
             const cardBody = (
@@ -453,33 +477,72 @@ export default function Exam({ user }: { user: AppUser }) {
                 </div>
                 {r.context && <p className="result__context">{r.context}</p>}
                 <p className="result__prompt">{r.prompt}</p>
-                <p className="result__row">
-                  <span className="result__label">あなたの解答</span>
-                  <span>
-                    {r.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : r.your_answer || <em className="muted">（空欄）</em>}
-                  </span>
-                </p>
-                {r.track === 'vocab' && !r.is_timeout && (() => {
-                  const m = vocabMatch(r.your_answer, r.model_answer)
-                  if (m.total === 0) return null
-                  return (
-                    <p className="vocab-match">
-                      あなたの {m.total} 語のうち <strong>{m.matched}</strong> 語が模範例と一致しました
-                      {m.matched > 0 ? ' 🎉 いいね！' : ''}
+                {r.track === 'sentence' ? (
+                  <>
+                    <p className="result__row">
+                      <span className="result__label">選んだ文</span>
+                      <span>
+                        {r.is_timeout ? (
+                          <em className="muted">（時間切れ・未選択）</em>
+                        ) : parsePicks(r.your_answer).length > 0 ? (
+                          parsePicks(r.your_answer).map((n) => `${n}番`).join('・')
+                        ) : (
+                          <em className="muted">（未選択）</em>
+                        )}
+                      </span>
                     </p>
-                  )
-                })()}
-                {r.track === 'joshi' && r.accepted_answers?.length > 0 && (
-                  <p className="result__row">
-                    <span className="result__label">正解</span>
-                    <span className="ans-joshi">{r.accepted_answers.join(' / ')}</span>
-                  </p>
-                )}
-                {r.model_answer && (
-                  <p className="result__row">
-                    <span className="result__label">{r.track === 'vocab' ? '模範解答例' : '解説'}</span>
-                    <span className={r.track === 'vocab' ? 'ans-vocab' : ''}>{r.model_answer}</span>
-                  </p>
+                    <ul className="mcq-review">
+                      {(r.options ?? []).map((o) => {
+                        const chosen = parsePicks(r.your_answer).includes(o.no)
+                        return (
+                          <li
+                            key={o.no}
+                            className={'mcq-opt' + (o.ok ? ' is-correct' : ' is-wrong') + (chosen ? ' is-chosen' : '')}
+                          >
+                            <span className="mcq-opt__mark">{o.ok ? '○' : '✕'}</span>
+                            <span className="mcq-opt__body">
+                              <span className="mcq-opt__text">
+                                {o.no}. {o.text}
+                                {chosen && <span className="mcq-opt__you">あなたの選択</span>}
+                              </span>
+                              {o.reason && <span className="mcq-opt__reason">{o.reason}</span>}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <p className="result__row">
+                      <span className="result__label">あなたの解答</span>
+                      <span>
+                        {r.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : r.your_answer || <em className="muted">（空欄）</em>}
+                      </span>
+                    </p>
+                    {r.track === 'vocab' && !r.is_timeout && (() => {
+                      const m = vocabMatch(r.your_answer, r.model_answer)
+                      if (m.total === 0) return null
+                      return (
+                        <p className="vocab-match">
+                          あなたの {m.total} 語のうち <strong>{m.matched}</strong> 語が模範例と一致しました
+                          {m.matched > 0 ? ' 🎉 いいね！' : ''}
+                        </p>
+                      )
+                    })()}
+                    {r.track === 'joshi' && r.accepted_answers?.length > 0 && (
+                      <p className="result__row">
+                        <span className="result__label">正解</span>
+                        <span className="ans-joshi">{r.accepted_answers.join(' / ')}</span>
+                      </p>
+                    )}
+                    {r.model_answer && (
+                      <p className="result__row">
+                        <span className="result__label">{r.track === 'vocab' ? '模範解答例' : '解説'}</span>
+                        <span className={r.track === 'vocab' ? 'ans-vocab' : ''}>{r.model_answer}</span>
+                      </p>
+                    )}
+                  </>
                 )}
               </li>
             ))}
@@ -542,7 +605,21 @@ export default function Exam({ user }: { user: AppUser }) {
           onExpire={() => recordAndNext(true)}
         />
 
-        {answerCount === 1 ? (
+        {track === 'sentence' ? (
+          <div className="mcq-options">
+            <p className="answers__hint muted">適切なものを、すべて選んでください（複数可）。</p>
+            {(current?.options ?? []).map((o) => {
+              const on = picked.includes(o.no)
+              return (
+                <label key={o.no} className={'mcq-opt-input' + (on ? ' is-on' : '')}>
+                  <input type="checkbox" checked={on} onChange={() => togglePick(o.no)} />
+                  <span className="mcq-opt-input__no">{o.no}</span>
+                  <span className="mcq-opt-input__text">{o.text}</span>
+                </label>
+              )
+            })}
+          </div>
+        ) : answerCount === 1 ? (
           <input
             className="field__input question__input"
             type="text"

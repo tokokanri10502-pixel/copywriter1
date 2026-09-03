@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
-import type { AppUser, Track } from '../types'
+import { parsePicks } from '../lib/sentence'
+import type { AppUser, SentenceOption, Track } from '../types'
 
 interface QRow {
   id: string
@@ -17,7 +18,11 @@ interface QRow {
   model_answer: string | null
   accepted_answers: string[]
   weakness_tags: string[]
+  options: SentenceOption[] | null
 }
+
+// 自動採点トラック（正誤が出る）= 助詞 と 文章判定。語彙は自己チェック。
+const isAuto = (t?: Track) => t === 'joshi' || t === 'sentence'
 interface SRow {
   id: string
   user_id: string
@@ -31,7 +36,7 @@ interface ScRow {
   is_correct: boolean | null
 }
 
-const TRACK_LABEL: Record<Track, string> = { joshi: '助詞', vocab: '語彙' }
+const TRACK_LABEL: Record<Track, string> = { joshi: '助詞', sentence: '文章', vocab: '語彙' }
 
 function todayStr(): string {
   const d = new Date()
@@ -52,7 +57,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
   const reload = useCallback(async () => {
     const [u, q, s, sc, sch] = await Promise.all([
       supabase.from('users').select('id, login_id, display_name, role').eq('role', 'trainee'),
-      supabase.from('questions').select('id, track, week, day, order_no, prompt, context, target_word, model_answer, accepted_answers, weakness_tags'),
+      supabase.from('questions').select('id, track, week, day, order_no, prompt, context, target_word, model_answer, accepted_answers, weakness_tags, options'),
       supabase.from('submissions').select('id, user_id, question_id, answer_text, elapsed_ms, is_timeout'),
       supabase.from('scores').select('submission_id, is_correct'),
       supabase.from('schedule').select('week, day, calendar_date, is_active'),
@@ -92,7 +97,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
     const availIds = new Set(questions.filter((q) => pastKeys.has(keyOf(q.week, q.day))).map((q) => q.id))
     const todayIds = new Set(questions.filter((q) => todayKeys.has(keyOf(q.week, q.day))).map((q) => q.id))
     const availByTrack = {
-      joshi: [...availIds].filter((id) => qById.get(id)?.track === 'joshi').length,
+      auto: [...availIds].filter((id) => isAuto(qById.get(id)?.track)).length,
       vocab: [...availIds].filter((id) => qById.get(id)?.track === 'vocab').length,
     }
     const todayTotal = todayIds.size
@@ -101,21 +106,21 @@ export default function Dashboard({ user }: { user: AppUser }) {
     const pastDayList = [...schedule]
       .filter((s) => s.calendar_date <= today)
       .sort((a, b) => a.calendar_date.localeCompare(b.calendar_date))
-    const joshiByDay = new Map<string, Set<string>>()
+    const autoByDay = new Map<string, Set<string>>()
     for (const q of questions) {
-      if (q.track !== 'joshi') continue
+      if (!isAuto(q.track)) continue
       const k = keyOf(q.week, q.day)
-      if (!joshiByDay.has(k)) joshiByDay.set(k, new Set())
-      joshiByDay.get(k)!.add(q.id)
+      if (!autoByDay.has(k)) autoByDay.set(k, new Set())
+      autoByDay.get(k)!.add(q.id)
     }
 
     return trainees.map((t) => {
       const subs = submissions.filter((s) => s.user_id === t.id && availIds.has(s.question_id))
       const todaySubs = subs.filter((s) => todayIds.has(s.question_id))
-      const joshiSubs = subs.filter((s) => qById.get(s.question_id)?.track === 'joshi')
+      const autoSubs = subs.filter((s) => isAuto(qById.get(s.question_id)?.track))
       const vocabSubs = subs.filter((s) => qById.get(s.question_id)?.track === 'vocab')
 
-      const graded = joshiSubs.map((s) => scBySub.get(s.id)).filter((v) => v === true || v === false)
+      const graded = autoSubs.map((s) => scBySub.get(s.id)).filter((v) => v === true || v === false)
       const correct = graded.filter((v) => v === true).length
       const accuracy = graded.length > 0 ? Math.round((correct / graded.length) * 100) : null
 
@@ -124,7 +129,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
       const avgSec = elapsedVals.length > 0 ? Math.round(elapsedVals.reduce((a, b) => a + b, 0) / elapsedVals.length / 1000) : null
 
       const trend = pastDayList.map((d, i) => {
-        const qids = joshiByDay.get(keyOf(d.week, d.day)) ?? new Set<string>()
+        const qids = autoByDay.get(keyOf(d.week, d.day)) ?? new Set<string>()
         const dSubs = submissions.filter((s) => s.user_id === t.id && qids.has(s.question_id))
         const g = dSubs.map((s) => scBySub.get(s.id)).filter((v) => v === true || v === false)
         const c = g.filter((v) => v === true).length
@@ -133,8 +138,8 @@ export default function Dashboard({ user }: { user: AppUser }) {
 
       return {
         trainee: t,
-        joshiSubmitted: joshiSubs.length, vocabSubmitted: vocabSubs.length,
-        availJoshi: availByTrack.joshi, availVocab: availByTrack.vocab,
+        autoSubmitted: autoSubs.length, vocabSubmitted: vocabSubs.length,
+        availAuto: availByTrack.auto, availVocab: availByTrack.vocab,
         todaySubmitted: todaySubs.length, todayTotal,
         accuracy, correct, graded: graded.length, timeouts, avgSec, trend,
       }
@@ -210,7 +215,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
                 <div className="metric"><span className="metric__label">当日の提出</span>
                   <span className="metric__value">{row.todaySubmitted}<span className="metric__unit"> / {row.todayTotal} 問</span></span></div>
                 <div className="metric"><span className="metric__label">累計提出</span>
-                  <span className="metric__value">助詞 {row.joshiSubmitted}/{row.availJoshi}・語彙 {row.vocabSubmitted}/{row.availVocab}</span></div>
+                  <span className="metric__value">助詞・文章 {row.autoSubmitted}/{row.availAuto}・語彙 {row.vocabSubmitted}/{row.availVocab}</span></div>
                 <div className="metric"><span className="metric__label">助詞 正答率</span>
                   <span className="metric__value">{row.accuracy === null ? '—' : `${row.accuracy}%`}{row.graded > 0 && <span className="metric__unit"> （{row.correct}/{row.graded}）</span>}</span></div>
                 <div className="metric"><span className="metric__label">時間切れ</span><span className="metric__value">{row.timeouts} 件</span></div>
@@ -282,16 +287,33 @@ export default function Dashboard({ user }: { user: AppUser }) {
                 <li key={sub.id} className="card result">
                   <div className="result__head">
                     <span className="result__q">{TRACK_LABEL[q.track]}{q.order_no}</span>
-                    {q.track === 'joshi' && correct === true && <span className="badge badge--ok">正解</span>}
-                    {q.track === 'joshi' && correct === false && <span className="badge badge--ng">不正解</span>}
+                    {isAuto(q.track) && correct === true && <span className="badge badge--ok">正解</span>}
+                    {isAuto(q.track) && correct === false && <span className="badge badge--ng">不正解</span>}
                     {q.track === 'vocab' && <span className="badge badge--self">語彙（要確認）</span>}
                   </div>
                   {q.context && <p className="result__context">{q.context}</p>}
                   <p className="result__prompt">{q.prompt}</p>
+                  {q.track === 'sentence' ? (
+                    <ul className="mcq-review">
+                      {(q.options ?? []).map((o) => {
+                        const chosen = parsePicks(sub.answer_text).includes(o.no)
+                        return (
+                          <li key={o.no} className={'mcq-opt' + (o.ok ? ' is-correct' : ' is-wrong') + (chosen ? ' is-chosen' : '')}>
+                            <span className="mcq-opt__mark">{o.ok ? '○' : '✕'}</span>
+                            <span className="mcq-opt__body">
+                              <span className="mcq-opt__text">{o.no}. {o.text}{chosen && <span className="mcq-opt__you">本人が選択</span>}</span>
+                              {o.reason && <span className="mcq-opt__reason">{o.reason}</span>}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ) : (
                   <p className="result__row">
                     <span className="result__label">本人の解答</span>
                     <span>{sub.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : sub.answer_text || <em className="muted">（空欄）</em>}</span>
                   </p>
+                  )}
                   {q.track === 'vocab' && !sub.is_timeout && (() => {
                     const m = vocabMatch(sub.answer_text, q.model_answer)
                     if (m.total === 0) return null

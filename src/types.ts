@@ -1,7 +1,15 @@
 // docs/spec.md 4 章のテーブルに対応する型（フロントで使う最小限）。
 
 export type Role = 'trainee' | 'manager'
-export type Track = 'joshi' | 'vocab'
+export type Track = 'joshi' | 'vocab' | 'sentence'
+
+// 文章判定トラック（選択式）の選択肢。ok/reason は提出後のみ入る（出題時は非開示）。
+export interface SentenceOption {
+  no: number
+  text: string
+  ok?: boolean
+  reason?: string
+}
 
 export interface AppUser {
   id: string
@@ -20,6 +28,7 @@ export interface TodayQuestion {
   prompt: string
   context: string | null
   target_word: string | null
+  options: SentenceOption[] | null // sentence トラックのみ。出題時は ok/reason 抜き
 }
 
 // 受験中に集める1問ぶんの解答（提出時に submit_set RPC へ渡す）。
@@ -56,4 +65,5 @@ export interface SetResult {
   model_answer: string | null
   accepted_answers: string[]
   scoring_method: string | null
+  options: SentenceOption[] | null // sentence: 提出後の選択肢（正誤・理由つき）
 }

@@ -20,6 +20,9 @@
   --vocab: #0d8a64;          /* 緑青（語彙） */
   --vocab-dark: #0a6f51;
   --vocab-soft: #e4f3ec;
+  --sentence: #7a5299;       /* 菫（文章判定） */
+  --sentence-dark: #634182;
+  --sentence-soft: #efeaf5;
   --seal: #b3472d;           /* 朱（文芸の差し色・印） */
   --seal-soft: #f6e9e3;
   --error: #b3472d;
@@ -339,6 +342,17 @@ h3 {
   --accent: var(--vocab);
   --accent-soft: var(--vocab-soft);
 }
+.exam--sentence {
+  --accent: var(--sentence);
+  --accent-soft: var(--sentence-soft);
+}
+.exam--sentence .btn--primary {
+  background: var(--sentence);
+  box-shadow: 0 8px 18px rgba(122, 82, 153, 0.24);
+}
+.exam--sentence .btn--primary:hover:not(:disabled) {
+  background: var(--sentence-dark);
+}
 
 /* vocab 画面は CTA・フォーカスもアクセント(緑青)で統一 */
 .exam--vocab .btn--primary {
@@ -475,6 +489,17 @@ h3 {
 .track-card--vocab {
   --accent: var(--vocab);
   --accent-soft: var(--vocab-soft);
+}
+.track-card--sentence {
+  --accent: var(--sentence);
+  --accent-soft: var(--sentence-soft);
+}
+.track-card--sentence .btn--primary {
+  background: var(--sentence);
+  box-shadow: 0 8px 18px rgba(122, 82, 153, 0.24);
+}
+.track-card--sentence .btn--primary:hover:not(:disabled) {
+  background: var(--sentence-dark);
 }
 
 .track-card:hover:not(:disabled) {
@@ -1009,6 +1034,116 @@ h3 {
   color: #fff;
   background: var(--seal);
   border-color: var(--seal);
+}
+
+/* ---------- 文章判定トレ（選択式） ---------- */
+/* 受験中：選択肢のチェックボックス */
+.mcq-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.mcq-opt-input {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 10px;
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.mcq-opt-input:hover {
+  border-color: var(--sentence);
+}
+.mcq-opt-input.is-on {
+  border-color: var(--sentence);
+  background: var(--sentence-soft);
+}
+.mcq-opt-input input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--sentence);
+  flex: none;
+}
+.mcq-opt-input__no {
+  font-family: var(--ui);
+  font-weight: 700;
+  color: var(--sentence-dark);
+  flex: none;
+}
+.mcq-opt-input__text {
+  font-family: var(--sans);
+  line-height: 1.6;
+}
+
+/* 結果：各選択肢の正誤・理由 */
+.mcq-review {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mcq-opt {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--card);
+}
+.mcq-opt.is-correct {
+  border-color: #bbe0cf;
+  background: var(--vocab-soft);
+}
+.mcq-opt.is-wrong {
+  border-color: #e7c7bf;
+  background: #fbeeea;
+}
+.mcq-opt.is-chosen {
+  box-shadow: inset 0 0 0 2px var(--sentence);
+}
+.mcq-opt__mark {
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.5;
+  flex: none;
+}
+.mcq-opt.is-correct .mcq-opt__mark {
+  color: var(--vocab-dark);
+}
+.mcq-opt.is-wrong .mcq-opt__mark {
+  color: var(--seal);
+}
+.mcq-opt__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mcq-opt__text {
+  font-family: var(--sans);
+  line-height: 1.6;
+}
+.mcq-opt__you {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--sentence);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.mcq-opt__reason {
+  font-size: 13px;
+  color: var(--muted);
+  font-family: var(--sans);
 }
 
 /* ---------- 5日刻みの節目 花火演出 ---------- */
