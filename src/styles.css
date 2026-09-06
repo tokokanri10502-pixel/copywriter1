@@ -1036,6 +1036,30 @@ h3 {
   border-color: var(--seal);
 }
 
+/* 文章判定：問題の頭に出す「着目」タグ */
+.focus-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 4px 14px 4px 4px;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sentence-dark);
+  background: var(--sentence-soft);
+  border-radius: 999px;
+}
+.focus-tag__label {
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--sentence);
+  border-radius: 999px;
+}
+
 /* ---------- 文章判定トレ（選択式） ---------- */
 /* 受験中：選択肢のチェックボックス */
 .mcq-options {

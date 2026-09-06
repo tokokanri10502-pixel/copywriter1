@@ -475,7 +475,15 @@ export default function Exam({ user }: { user: AppUser }) {
                   {r.is_correct === false && <span className="badge badge--ng">不正解</span>}
                   {r.is_correct === null && <span className="badge badge--self">自己チェック</span>}
                 </div>
-                {r.context && <p className="result__context">{r.context}</p>}
+                {r.context &&
+                  (r.track === 'sentence' ? (
+                    <p className="focus-tag">
+                      <span className="focus-tag__label">着目</span>
+                      {r.context}
+                    </p>
+                  ) : (
+                    <p className="result__context">{r.context}</p>
+                  ))}
                 <p className="result__prompt">{r.prompt}</p>
                 {r.track === 'sentence' ? (
                   <>
@@ -589,12 +597,18 @@ export default function Exam({ user }: { user: AppUser }) {
       </div>
 
       <form className="card question" onSubmit={handleSubmit}>
-        {current?.context && (
-          <p className="question__context">
-            <span className="question__context-label">文脈</span>
-            {current.context}
-          </p>
-        )}
+        {current?.context &&
+          (track === 'sentence' ? (
+            <p className="focus-tag">
+              <span className="focus-tag__label">着目</span>
+              {current.context}
+            </p>
+          ) : (
+            <p className="question__context">
+              <span className="question__context-label">文脈</span>
+              {current.context}
+            </p>
+          ))}
         <p className="question__prompt">{current?.prompt}</p>
 
         {/* タイマーは入力欄の真上（通常フロー内）に置く。iOS Safari は keyboard 表示中に
