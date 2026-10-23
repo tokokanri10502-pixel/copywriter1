@@ -718,7 +718,10 @@ export default function Exam({ user }: { user: AppUser }) {
             <p className="answers__hint muted">下の欄の文を直して提出してください（元の文が入っています）。</p>
             <textarea
               key={current?.id}
-              className="field__input question__input rewrite-input"
+              className={
+                'field__input question__input rewrite-input' +
+                ((inputs[0] ?? '') === (current?.prompt ?? '') ? ' is-original' : '')
+              }
               rows={3}
               value={inputs[0] ?? ''}
               onChange={(e) => updateInput(0, e.target.value)}

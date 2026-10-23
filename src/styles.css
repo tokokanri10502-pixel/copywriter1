@@ -1556,6 +1556,11 @@ h3 {
   min-height: 92px;
   line-height: 1.7;
   resize: vertical;
+  transition: color 0.15s ease;
+}
+/* 元の文のまま（まだ打ち替えていない）間は薄く表示し、手を入れたら通常の濃さに戻す */
+.rewrite-input.is-original {
+  color: #9b9586;
 }
 .rewrite-yours {
   font-family: var(--sans);
