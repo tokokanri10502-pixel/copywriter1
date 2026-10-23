@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
 import { parsePicks, picksToText } from '../lib/sentence'
-import { SELF_RATINGS, splitRewriteModel } from '../lib/rewrite'
+import { SELF_RATINGS, matchesModel, splitRewriteModel } from '../lib/rewrite'
 import type { AnswerDraft, AppUser, SelfRating, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
 
 const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, sentence: 60, rewrite: 120, vocab: 60 }
@@ -520,10 +520,13 @@ export default function Exam({ user }: { user: AppUser }) {
                         </p>
                         <p className="result__row">
                           <span className="result__label">あなたの文</span>
-                          <span>
+                          <span className="rewrite-yours">
                             {r.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : r.your_answer || <em className="muted">（空欄）</em>}
                           </span>
                         </p>
+                        {!r.is_timeout && matchesModel(r.your_answer, examples) && (
+                          <p className="rewrite-match">○ 模範例と一致しています</p>
+                        )}
                         {examples && (
                           <p className="result__row">
                             <span className="result__label">模範例</span>

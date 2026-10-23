@@ -19,3 +19,14 @@ export const selfRatingLabel = (r: SelfRating | null | undefined) => {
   const hit = SELF_RATINGS.find((x) => x.value === r)
   return hit ? `${hit.mark} ${hit.label}` : null
 }
+
+// 比較用に、空白・かぎかっこ・文末の句点を取り除く。
+const normalizeSentence = (s: string) =>
+  s.replace(/[\s　「」『』]/g, '').replace(/[。．.]+$/, '')
+
+// 書き直した文が模範例のどれかと（表記の細部を除いて）完全一致するか。
+export function matchesModel(answer: string | null | undefined, examples: string): boolean {
+  if (!answer || !examples) return false
+  const a = normalizeSentence(answer)
+  return a !== '' && examples.split('／').some((ex) => normalizeSentence(ex) === a)
+}

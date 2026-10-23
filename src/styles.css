@@ -1557,6 +1557,28 @@ h3 {
   line-height: 1.7;
   resize: vertical;
 }
+.rewrite-yours {
+  font-family: var(--sans);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.8;
+}
+.rewrite-match {
+  display: inline-block;
+  margin: 2px 0 6px 96px;
+  padding: 3px 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vocab-dark);
+  background: var(--vocab-soft);
+  border-radius: 999px;
+}
+@media (max-width: 480px) {
+  .rewrite-match {
+    margin-left: 0;
+  }
+}
 .rewrite-model {
   color: var(--vocab-dark);
   font-family: var(--sans);

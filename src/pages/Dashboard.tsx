@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
 import { parsePicks } from '../lib/sentence'
-import { SELF_RATINGS, selfRatingLabel, splitRewriteModel } from '../lib/rewrite'
+import { SELF_RATINGS, matchesModel, selfRatingLabel, splitRewriteModel } from '../lib/rewrite'
 import type { AppUser, SelfRating, SentenceOption, Track } from '../types'
 
 interface QRow {
@@ -320,7 +320,10 @@ export default function Dashboard({ user }: { user: AppUser }) {
                         <>
                           <p className="result__row"><span className="result__label">元の文</span><span className="rewrite-src">{q.prompt}</span></p>
                           <p className="result__row"><span className="result__label">本人の文</span>
-                            <span>{sub.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : sub.answer_text || <em className="muted">（空欄）</em>}</span></p>
+                            <span className="rewrite-yours">{sub.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : sub.answer_text || <em className="muted">（空欄）</em>}</span></p>
+                          {!sub.is_timeout && matchesModel(sub.answer_text, examples) && (
+                            <p className="rewrite-match">○ 模範例と一致しています</p>
+                          )}
                           {examples && <p className="result__row"><span className="result__label">模範例</span><span className="rewrite-model">{examples}</span></p>}
                           {point && <p className="result__row"><span className="result__label">観点</span><span className="rewrite-point">{point}</span></p>}
                         </>
