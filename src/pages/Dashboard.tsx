@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
 import { parsePicks } from '../lib/sentence'
-import type { AppUser, SentenceOption, Track } from '../types'
+import { SELF_RATINGS, selfRatingLabel, splitRewriteModel } from '../lib/rewrite'
+import type { AppUser, SelfRating, SentenceOption, Track } from '../types'
 
 interface QRow {
   id: string
@@ -30,13 +31,14 @@ interface SRow {
   answer_text: string | null
   elapsed_ms: number | null
   is_timeout: boolean
+  self_rating: SelfRating | null
 }
 interface ScRow {
   submission_id: string
   is_correct: boolean | null
 }
 
-const TRACK_LABEL: Record<Track, string> = { joshi: '助詞', sentence: '文章', vocab: '語彙' }
+const TRACK_LABEL: Record<Track, string> = { joshi: '助詞', sentence: '文章', rewrite: '推敲', vocab: '語彙' }
 
 function todayStr(): string {
   const d = new Date()
@@ -58,7 +60,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
     const [u, q, s, sc, sch] = await Promise.all([
       supabase.from('users').select('id, login_id, display_name, role').eq('role', 'trainee'),
       supabase.from('questions').select('id, track, week, day, order_no, prompt, context, target_word, model_answer, accepted_answers, weakness_tags, options'),
-      supabase.from('submissions').select('id, user_id, question_id, answer_text, elapsed_ms, is_timeout'),
+      supabase.from('submissions').select('id, user_id, question_id, answer_text, elapsed_ms, is_timeout, self_rating'),
       supabase.from('scores').select('submission_id, is_correct'),
       supabase.from('schedule').select('week, day, calendar_date, is_active'),
     ])
@@ -119,6 +121,11 @@ export default function Dashboard({ user }: { user: AppUser }) {
       const todaySubs = subs.filter((s) => todayIds.has(s.question_id))
       const autoSubs = subs.filter((s) => isAuto(qById.get(s.question_id)?.track))
       const vocabSubs = subs.filter((s) => qById.get(s.question_id)?.track === 'vocab')
+      const rewriteSubs = subs.filter((s) => qById.get(s.question_id)?.track === 'rewrite')
+      const rewriteRating = SELF_RATINGS.map((x) => ({
+        ...x,
+        n: rewriteSubs.filter((s) => s.self_rating === x.value).length,
+      }))
 
       const graded = autoSubs.map((s) => scBySub.get(s.id)).filter((v) => v === true || v === false)
       const correct = graded.filter((v) => v === true).length
@@ -139,6 +146,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
       return {
         trainee: t,
         autoSubmitted: autoSubs.length, vocabSubmitted: vocabSubs.length,
+        rewriteSubmitted: rewriteSubs.length, rewriteRating,
         availAuto: availByTrack.auto, availVocab: availByTrack.vocab,
         todaySubmitted: todaySubs.length, todayTotal,
         accuracy, correct, graded: graded.length, timeouts, avgSec, trend,
@@ -218,6 +226,13 @@ export default function Dashboard({ user }: { user: AppUser }) {
                   <span className="metric__value">助詞・文章 {row.autoSubmitted}/{row.availAuto}・語彙 {row.vocabSubmitted}/{row.availVocab}</span></div>
                 <div className="metric"><span className="metric__label">助詞 正答率</span>
                   <span className="metric__value">{row.accuracy === null ? '—' : `${row.accuracy}%`}{row.graded > 0 && <span className="metric__unit"> （{row.correct}/{row.graded}）</span>}</span></div>
+                {row.rewriteSubmitted > 0 && (
+                  <div className="metric"><span className="metric__label">推敲 自己採点</span>
+                    <span className="metric__value">
+                      {row.rewriteRating.map((x) => `${x.mark}${x.n}`).join(' ')}
+                      <span className="metric__unit"> （提出 {row.rewriteSubmitted}）</span>
+                    </span></div>
+                )}
                 <div className="metric"><span className="metric__label">時間切れ</span><span className="metric__value">{row.timeouts} 件</span></div>
                 <div className="metric"><span className="metric__label">平均所要</span><span className="metric__value">{row.avgSec === null ? '—' : `${row.avgSec} 秒/問`}</span></div>
                 <div className="metric metric--col">
@@ -262,7 +277,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
             <h2 className="exam__heading">
               {selectedName} さんの解答{selectedDay ? `（${selectedDay}日目）` : ''}
             </h2>
-            <p className="muted dash__sync">語彙は自動採点なし。解答と模範解答例を見て判断してください。</p>
+            <p className="muted dash__sync">語彙・推敲は自動採点なし。解答と模範例を見て判断してください（推敲は本人の自己採点つき）。</p>
           </div>
 
           {dayTabs.length > 0 && (
@@ -290,10 +305,28 @@ export default function Dashboard({ user }: { user: AppUser }) {
                     {isAuto(q.track) && correct === true && <span className="badge badge--ok">正解</span>}
                     {isAuto(q.track) && correct === false && <span className="badge badge--ng">不正解</span>}
                     {q.track === 'vocab' && <span className="badge badge--self">語彙（要確認）</span>}
+                    {q.track === 'rewrite' && (
+                      <span className="badge badge--self">
+                        {selfRatingLabel(sub.self_rating) ? `自己採点 ${selfRatingLabel(sub.self_rating)}` : '自己採点なし'}
+                      </span>
+                    )}
                   </div>
-                  {q.context && <p className="result__context">{q.context}</p>}
-                  <p className="result__prompt">{q.prompt}</p>
-                  {q.track === 'sentence' ? (
+                  {q.context && <p className="result__context">{q.track === 'rewrite' ? `着目｜${q.context}` : q.context}</p>}
+                  {q.track !== 'rewrite' && <p className="result__prompt">{q.prompt}</p>}
+                  {q.track === 'rewrite' ? (
+                    (() => {
+                      const { examples, point } = splitRewriteModel(q.model_answer)
+                      return (
+                        <>
+                          <p className="result__row"><span className="result__label">元の文</span><span className="rewrite-src">{q.prompt}</span></p>
+                          <p className="result__row"><span className="result__label">本人の文</span>
+                            <span>{sub.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : sub.answer_text || <em className="muted">（空欄）</em>}</span></p>
+                          {examples && <p className="result__row"><span className="result__label">模範例</span><span className="rewrite-model">{examples}</span></p>}
+                          {point && <p className="result__row"><span className="result__label">観点</span><span className="rewrite-point">{point}</span></p>}
+                        </>
+                      )
+                    })()
+                  ) : q.track === 'sentence' ? (
                     <ul className="mcq-review">
                       {(q.options ?? []).map((o) => {
                         const chosen = parsePicks(sub.answer_text).includes(o.no)
@@ -324,7 +357,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
                   {q.track === 'joshi' && q.accepted_answers?.length > 0 && (
                     <p className="result__row"><span className="result__label">正解</span><span className="ans-joshi">{q.accepted_answers.join(' / ')}</span></p>
                   )}
-                  {q.model_answer && (
+                  {q.model_answer && q.track !== 'rewrite' && (
                     <p className="result__row"><span className="result__label">{q.track === 'vocab' ? '模範解答例' : '解説'}</span><span className={q.track === 'vocab' ? 'ans-vocab' : ''}>{q.model_answer}</span></p>
                   )}
                 </li>

@@ -6,24 +6,30 @@ import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
 import { parsePicks, picksToText } from '../lib/sentence'
-import type { AnswerDraft, AppUser, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
+import { SELF_RATINGS, splitRewriteModel } from '../lib/rewrite'
+import type { AnswerDraft, AppUser, SelfRating, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
 
-const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, sentence: 60, vocab: 60 }
-const ANSWERS_BY_TRACK: Record<Track, number> = { joshi: 1, sentence: 1, vocab: 5 }
+const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, sentence: 60, rewrite: 120, vocab: 60 }
+const ANSWERS_BY_TRACK: Record<Track, number> = { joshi: 1, sentence: 1, rewrite: 1, vocab: 5 }
 const TRACK_LABEL: Record<Track, string> = {
   joshi: '助詞トレーニング',
   sentence: '文章判定トレーニング',
+  rewrite: '推敲トレーニング',
   vocab: '語彙トレーニング',
 }
-const TRACK_ICON: Record<Track, string> = { joshi: '助', sentence: '文', vocab: '語' }
-const TRACK_ABBR: Record<Track, string> = { joshi: '助詞トレ', sentence: '文章判定', vocab: '語彙トレ' }
+const TRACK_ICON: Record<Track, string> = { joshi: '助', sentence: '文', rewrite: '推', vocab: '語' }
+const TRACK_ABBR: Record<Track, string> = { joshi: '助詞トレ', sentence: '文章判定', rewrite: '推敲', vocab: '語彙トレ' }
 const TRACK_DESC: Record<Track, string> = {
   joshi: 'てにをはを正確に運用する',
   sentence: '適切な文を見分ける（複数選択）',
+  rewrite: '一文を正しく、簡潔に書き直す',
   vocab: '言い換え・連想で語彙を広げる',
 }
-// トラックの並び順（1日の出題は「助詞 or 文章」＋語彙）。
-const TRACK_ORDER: Track[] = ['joshi', 'sentence', 'vocab']
+// トラックの並び順（1日の出題は「助詞 or 文章 or 推敲」＋語彙）。
+const TRACK_ORDER: Track[] = ['joshi', 'sentence', 'rewrite', 'vocab']
+const EMPTY_DONE: Record<Track, SetResult[] | null> = { joshi: null, sentence: null, rewrite: null, vocab: null }
+// 「着目」タグを出すトラック（context=着目ラベル）。
+const hasFocus = (t: Track | null | undefined) => t === 'sentence' || t === 'rewrite'
 
 type Phase = 'select' | 'running' | 'done'
 
@@ -50,11 +56,7 @@ function ExamHeader({ name, onLogout }: { name: string; onLogout: () => void }) 
 export default function Exam({ user }: { user: AppUser }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [questions, setQuestions] = useState<TodayQuestion[]>([])
-  const [doneResults, setDoneResults] = useState<Record<Track, SetResult[] | null>>({
-    joshi: null,
-    sentence: null,
-    vocab: null,
-  })
+  const [doneResults, setDoneResults] = useState<Record<Track, SetResult[] | null>>(EMPTY_DONE)
 
   const [phase, setPhase] = useState<Phase>('select')
   const [track, setTrack] = useState<Track | null>(null)
@@ -113,7 +115,7 @@ export default function Exam({ user }: { user: AppUser }) {
     )
 
     // 既提出のトラックは結果として束ねる（submitted=true の行だけ）
-    const grouped: Record<Track, SetResult[] | null> = { joshi: null, sentence: null, vocab: null }
+    const grouped: Record<Track, SetResult[] | null> = { ...EMPTY_DONE }
     for (const t of TRACK_ORDER) {
       const done = rows
         .filter((r) => r.track === t && r.submitted)
@@ -131,6 +133,7 @@ export default function Exam({ user }: { user: AppUser }) {
           accepted_answers: r.accepted_answers ?? [],
           scoring_method: r.scoring_method,
           options: r.options ?? null,
+          self_rating: r.self_rating ?? null,
         }))
       if (done.length > 0) grouped[t] = done
     }
@@ -182,11 +185,15 @@ export default function Exam({ user }: { user: AppUser }) {
   // 通算の日番号（週1日1=1日目 … 週2日5=10日目）。当日の出題から算出。
   const dayNo = questions[0] ? (questions[0].week - 1) * 5 + questions[0].day : null
 
+  // 推敲は元の文を入力欄に入れておき、直す形で書けるようにする。
+  const initialInputs = (t: Track, q?: TodayQuestion) =>
+    t === 'rewrite' ? [q?.prompt ?? ''] : Array(ANSWERS_BY_TRACK[t]).fill('')
+
   function startSet(t: Track) {
     finalizingRef.current = false
     setTrack(t)
     setIndex(0)
-    setInputs(Array(ANSWERS_BY_TRACK[t]).fill(''))
+    setInputs(initialInputs(t, setFor(t)[0]))
     setPicked([])
     setRunAnswers([])
     setPhase('running')
@@ -225,6 +232,21 @@ export default function Exam({ user }: { user: AppUser }) {
     setPicked((prev) => (prev.includes(no) ? prev.filter((n) => n !== no) : [...prev, no]))
   }
 
+  // 推敲の自己採点を保存（本人の提出にだけ書き込まれる）。失敗したら表示を元に戻す。
+  async function rate(questionId: string, rating: SelfRating) {
+    const apply = (list: SetResult[] | null, v: SelfRating | null) =>
+      list?.map((r) => (r.question_id === questionId ? { ...r, self_rating: v } : r)) ?? null
+    const prevRating = results.find((r) => r.question_id === questionId)?.self_rating ?? null
+    setResults((prev) => apply(prev, rating) ?? [])
+    setDoneResults((prev) => ({ ...prev, rewrite: apply(prev.rewrite, rating) }))
+    const { error } = await supabase.rpc('set_self_rating', { p_question_id: questionId, p_rating: rating })
+    if (error) {
+      setSubmitError(error.message ?? JSON.stringify(error))
+      setResults((prev) => apply(prev, prevRating) ?? [])
+      setDoneResults((prev) => ({ ...prev, rewrite: apply(prev.rewrite, prevRating) }))
+    }
+  }
+
   async function submitSet(answers: AnswerDraft[]) {
     setSubmitting(true)
     const { data, error } = await supabase.rpc('submit_set', { p_answers: answers })
@@ -261,7 +283,7 @@ export default function Exam({ user }: { user: AppUser }) {
     }
     const next = [...runAnswers, draft]
     setRunAnswers(next)
-    setInputs(Array(answerCount).fill(''))
+    setInputs(track ? initialInputs(track, trackQuestions[index + 1]) : [''])
     setPicked([])
 
     if (index < trackQuestions.length - 1) {
@@ -455,6 +477,8 @@ export default function Exam({ user }: { user: AppUser }) {
               <p className="done__sub muted">
                 {graded > 0
                   ? `自動採点 ${correct} / ${graded} 問正解`
+                  : track === 'rewrite'
+                  ? '提出しました。模範例と観点を読んで、1問ずつ自己採点してください'
                   : '提出しました（語彙は模範解答例で自己チェック）'}
               </p>
             </div>
@@ -476,7 +500,7 @@ export default function Exam({ user }: { user: AppUser }) {
                   {r.is_correct === null && <span className="badge badge--self">自己チェック</span>}
                 </div>
                 {r.context &&
-                  (r.track === 'sentence' ? (
+                  (hasFocus(r.track) ? (
                     <p className="focus-tag">
                       <span className="focus-tag__label">着目</span>
                       {r.context}
@@ -484,8 +508,54 @@ export default function Exam({ user }: { user: AppUser }) {
                   ) : (
                     <p className="result__context">{r.context}</p>
                   ))}
-                <p className="result__prompt">{r.prompt}</p>
-                {r.track === 'sentence' ? (
+                {r.track !== 'rewrite' && <p className="result__prompt">{r.prompt}</p>}
+                {r.track === 'rewrite' ? (
+                  (() => {
+                    const { examples, point } = splitRewriteModel(r.model_answer)
+                    return (
+                      <>
+                        <p className="result__row">
+                          <span className="result__label">元の文</span>
+                          <span className="rewrite-src">{r.prompt}</span>
+                        </p>
+                        <p className="result__row">
+                          <span className="result__label">あなたの文</span>
+                          <span>
+                            {r.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : r.your_answer || <em className="muted">（空欄）</em>}
+                          </span>
+                        </p>
+                        {examples && (
+                          <p className="result__row">
+                            <span className="result__label">模範例</span>
+                            <span className="rewrite-model">{examples}</span>
+                          </p>
+                        )}
+                        {point && (
+                          <p className="result__row">
+                            <span className="result__label">観点</span>
+                            <span className="rewrite-point">{point}</span>
+                          </p>
+                        )}
+                        <div className="self-rate">
+                          <span className="self-rate__label">自己採点</span>
+                          <div className="self-rate__btns">
+                            {SELF_RATINGS.map((x) => (
+                              <button
+                                key={x.value}
+                                type="button"
+                                className={'self-rate__btn self-rate__btn--' + x.value + (r.self_rating === x.value ? ' is-on' : '')}
+                                onClick={() => rate(r.question_id, x.value)}
+                              >
+                                <span className="self-rate__mark">{x.mark}</span>
+                                {x.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )
+                  })()
+                ) : r.track === 'sentence' ? (
                   <>
                     <p className="result__row">
                       <span className="result__label">選んだ文</span>
@@ -598,7 +668,7 @@ export default function Exam({ user }: { user: AppUser }) {
 
       <form className="card question" onSubmit={handleSubmit}>
         {current?.context &&
-          (track === 'sentence' ? (
+          (hasFocus(track) ? (
             <p className="focus-tag">
               <span className="focus-tag__label">着目</span>
               {current.context}
@@ -609,7 +679,14 @@ export default function Exam({ user }: { user: AppUser }) {
               {current.context}
             </p>
           ))}
-        <p className="question__prompt">{current?.prompt}</p>
+        {track === 'rewrite' ? (
+          <>
+            <p className="answers__hint muted">次の文を、正しく読みやすい文に書き直してください。</p>
+            <p className="question__prompt rewrite-src">{current?.prompt}</p>
+          </>
+        ) : (
+          <p className="question__prompt">{current?.prompt}</p>
+        )}
 
         {/* タイマーは入力欄の真上（通常フロー内）に置く。iOS Safari は keyboard 表示中に
             position:fixed が表示領域へ追従しないため、入力欄の近くに置いて常に見えるようにする。 */}
@@ -632,6 +709,18 @@ export default function Exam({ user }: { user: AppUser }) {
                 </label>
               )
             })}
+          </div>
+        ) : track === 'rewrite' ? (
+          <div className="answers">
+            <p className="answers__hint muted">下の欄の文を直して提出してください（元の文が入っています）。</p>
+            <textarea
+              key={current?.id}
+              className="field__input question__input rewrite-input"
+              rows={3}
+              value={inputs[0] ?? ''}
+              onChange={(e) => updateInput(0, e.target.value)}
+              autoFocus
+            />
           </div>
         ) : answerCount === 1 ? (
           <input

@@ -23,6 +23,9 @@
   --sentence: #7a5299;       /* 菫（文章判定） */
   --sentence-dark: #634182;
   --sentence-soft: #efeaf5;
+  --rewrite: #8a5a24;        /* 柿渋（推敲） */
+  --rewrite-dark: #6f4719;
+  --rewrite-soft: #f5ece0;
   --seal: #b3472d;           /* 朱（文芸の差し色・印） */
   --seal-soft: #f6e9e3;
   --error: #b3472d;
@@ -354,6 +357,30 @@ h3 {
   background: var(--sentence-dark);
 }
 
+/* 推敲 画面は柿渋で統一 */
+.exam--rewrite {
+  --accent: var(--rewrite);
+  --accent-soft: var(--rewrite-soft);
+}
+.exam--rewrite .btn--primary {
+  background: var(--rewrite);
+  box-shadow: 0 8px 18px rgba(138, 90, 36, 0.24);
+}
+.exam--rewrite .btn--primary:hover:not(:disabled) {
+  background: var(--rewrite-dark);
+}
+.exam--rewrite .field__input:focus {
+  border-color: var(--rewrite);
+  box-shadow: 0 0 0 3px rgba(138, 90, 36, 0.15);
+}
+.exam--rewrite .focus-tag {
+  color: var(--rewrite-dark);
+  background: var(--rewrite-soft);
+}
+.exam--rewrite .focus-tag__label {
+  background: var(--rewrite);
+}
+
 /* vocab 画面は CTA・フォーカスもアクセント(緑青)で統一 */
 .exam--vocab .btn--primary {
   background: var(--vocab);
@@ -500,6 +527,18 @@ h3 {
 }
 .track-card--sentence .btn--primary:hover:not(:disabled) {
   background: var(--sentence-dark);
+}
+
+.track-card--rewrite {
+  --accent: var(--rewrite);
+  --accent-soft: var(--rewrite-soft);
+}
+.track-card--rewrite .btn--primary {
+  background: var(--rewrite);
+  box-shadow: 0 8px 18px rgba(138, 90, 36, 0.24);
+}
+.track-card--rewrite .btn--primary:hover:not(:disabled) {
+  background: var(--rewrite-dark);
 }
 
 .track-card:hover:not(:disabled) {
@@ -1497,4 +1536,89 @@ h3 {
     font-size: 12px;
     padding: 6px 12px;
   }
+}
+
+/* ---------- 推敲トレ（書き直し＋自己採点） ---------- */
+.rewrite-src {
+  display: block;
+  padding: 10px 14px;
+  font-family: var(--serif);
+  font-weight: 700;
+  line-height: 1.8;
+  background: var(--rewrite-soft);
+  border-radius: 10px;
+}
+.question__prompt.rewrite-src {
+  margin-bottom: 14px;
+}
+.rewrite-input {
+  width: 100%;
+  min-height: 92px;
+  line-height: 1.7;
+  resize: vertical;
+}
+.rewrite-model {
+  color: var(--vocab-dark);
+  font-family: var(--sans);
+  font-weight: 700;
+  line-height: 1.8;
+}
+.rewrite-point {
+  font-family: var(--sans);
+  color: var(--ink-soft);
+  line-height: 1.8;
+}
+.self-rate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rule-strong);
+}
+.self-rate__label {
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted-2);
+}
+.self-rate__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.self-rate__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.self-rate__btn:hover {
+  border-color: var(--rewrite);
+}
+.self-rate__mark {
+  font-weight: 700;
+}
+.self-rate__btn.is-on {
+  color: #fff;
+  border-color: transparent;
+}
+.self-rate__btn--good.is-on {
+  background: var(--vocab);
+}
+.self-rate__btn--close.is-on {
+  background: var(--warn);
+}
+.self-rate__btn--miss.is-on {
+  background: var(--seal);
 }

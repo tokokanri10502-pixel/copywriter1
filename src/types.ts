@@ -1,7 +1,10 @@
 // docs/spec.md 4 章のテーブルに対応する型（フロントで使う最小限）。
 
 export type Role = 'trainee' | 'manager'
-export type Track = 'joshi' | 'vocab' | 'sentence'
+export type Track = 'joshi' | 'vocab' | 'sentence' | 'rewrite'
+
+// 推敲トラックの自己採点（できた / 惜しい / 直せていない）。
+export type SelfRating = 'good' | 'close' | 'miss'
 
 // 文章判定トラック（選択式）の選択肢。ok/reason は提出後のみ入る（出題時は非開示）。
 export interface SentenceOption {
@@ -49,6 +52,7 @@ export interface TodayFullRow extends TodayQuestion {
   model_answer: string | null
   accepted_answers: string[]
   scoring_method: string | null
+  self_rating: SelfRating | null
 }
 
 // submit_set / get_results が返す採点済み1問ぶん（提出後に正解・模範解答を開示）。
@@ -66,4 +70,5 @@ export interface SetResult {
   accepted_answers: string[]
   scoring_method: string | null
   options: SentenceOption[] | null // sentence: 提出後の選択肢（正誤・理由つき）
+  self_rating?: SelfRating | null // rewrite: 自己採点
 }
