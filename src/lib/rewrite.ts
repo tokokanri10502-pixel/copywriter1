@@ -30,3 +30,9 @@ export function matchesModel(answer: string | null | undefined, examples: string
   const a = normalizeSentence(answer)
   return a !== '' && examples.split('／').some((ex) => normalizeSentence(ex) === a)
 }
+
+// 元の文から書き換えていないか（空白・かぎかっこ・文末の句点の違いは無視）。
+export function isUnchanged(answer: string | null | undefined, original: string | null | undefined): boolean {
+  if (!answer || !original) return false
+  return normalizeSentence(answer) === normalizeSentence(original)
+}

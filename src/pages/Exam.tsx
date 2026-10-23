@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { vocabMatch } from '../lib/vocab'
 import { parsePicks, picksToText } from '../lib/sentence'
-import { SELF_RATINGS, matchesModel, splitRewriteModel } from '../lib/rewrite'
+import { SELF_RATINGS, isUnchanged, matchesModel, splitRewriteModel } from '../lib/rewrite'
 import type { AnswerDraft, AppUser, SelfRating, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
 
 const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, sentence: 60, rewrite: 120, vocab: 60 }
@@ -273,8 +273,10 @@ export default function Exam({ user }: { user: AppUser }) {
   function recordAndNext(timedOut: boolean) {
     if (!current || finalizingRef.current) return
     // 文章判定は選んだ番号（"3,4"）、それ以外は入力欄を「、」連結。
-    const answerText =
+    const joined =
       track === 'sentence' ? picksToText(picked) : inputs.map((s) => s.trim()).filter(Boolean).join('、')
+    // 推敲で元の文のまま提出した場合は「書き直しなし」（空の解答）として記録する。
+    const answerText = track === 'rewrite' && isUnchanged(joined, current.prompt) ? '' : joined
     const draft: AnswerDraft = {
       question_id: current.id,
       answer_text: timedOut ? '' : answerText,
@@ -521,7 +523,13 @@ export default function Exam({ user }: { user: AppUser }) {
                         <p className="result__row">
                           <span className="result__label">あなたの文</span>
                           <span className="rewrite-yours">
-                            {r.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : r.your_answer || <em className="muted">（空欄）</em>}
+                            {r.is_timeout ? (
+                              <em className="muted">（時間切れ・未回答）</em>
+                            ) : !r.your_answer || isUnchanged(r.your_answer, r.prompt) ? (
+                              <em className="muted">（書き直しなし）</em>
+                            ) : (
+                              r.your_answer
+                            )}
                           </span>
                         </p>
                         {!r.is_timeout && matchesModel(r.your_answer, examples) && (
