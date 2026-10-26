@@ -350,8 +350,23 @@ export default function Exam({ user }: { user: AppUser }) {
       const end = Math.max(...days.filter((n) => decadeOf(n) === start))
       return start === end ? `${start}日目` : `${start}〜${end}`
     }
+    // 講評が届いている日のうち、いま開いていない日（上部のお知らせで案内する）。
+    const otherReviewDays = reviewDays.filter((n) => n !== selectedDay && days.includes(n)).sort((a, b) => a - b)
     return (
       <div className="demo-switch">
+        {otherReviewDays.length > 0 && (
+          <div className="review-banner">
+            <span className="review-banner__icon" aria-hidden>✉</span>
+            <span className="review-banner__text">推敲の講評が届いています</span>
+            <span className="review-banner__btns">
+              {otherReviewDays.map((n) => (
+                <button key={n} className="review-banner__btn" onClick={() => switchDay(n)}>
+                  {n}日目を見る →
+                </button>
+              ))}
+            </span>
+          </div>
+        )}
         <span className="demo-switch__label">
           {demo.demo_mode ? 'テスト：出題日を切り替え' : '出題日（過去分も復習できます）'}
         </span>
@@ -364,6 +379,7 @@ export default function Exam({ user }: { user: AppUser }) {
                 onClick={() => setOpenDecade(start)}
               >
                 {decadeLabel(start)}
+                {reviewDays.some((n) => decadeOf(n) === start) && <span className="tab-badge">講評</span>}
               </button>
             ))}
           </div>
@@ -376,7 +392,7 @@ export default function Exam({ user }: { user: AppUser }) {
               onClick={() => switchDay(n)}
             >
               {n}日目
-              {reviewDays.includes(n) && <span className="day-tab__dot" title="新しい講評があります" />}
+              {reviewDays.includes(n) && <span className="tab-badge">講評</span>}
             </button>
           ))}
           {demo.demo_mode && (

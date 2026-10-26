@@ -1751,14 +1751,65 @@ h3 {
 .day-tab {
   position: relative;
 }
-.day-tab__dot {
+.decade-tab {
+  position: relative;
+}
+/* 講評が届いた日・範囲に付ける目立つ札（朱） */
+.tab-badge {
   position: absolute;
-  top: 4px;
-  right: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--rewrite);
+  top: -9px;
+  right: -6px;
+  padding: 1px 7px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: #fff;
+  background: var(--seal);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(179, 71, 45, 0.35);
+  pointer-events: none;
+}
+/* 出題日の上に出す「講評が届いています」のお知らせ */
+.review-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #e7c7bf;
+  border-radius: 10px;
+  background: var(--seal-soft);
+}
+.review-banner__icon {
+  font-size: 18px;
+  color: var(--seal);
+}
+.review-banner__text {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--seal);
+}
+.review-banner__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.review-banner__btn {
+  padding: 5px 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--seal);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.review-banner__btn:hover {
+  filter: brightness(1.08);
 }
 .notice--review {
   border-color: #e3d3bd;
@@ -1781,4 +1832,10 @@ h3 {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* 札（講評）が上の段に重ならないよう、段と段の間を少し広げる */
+.day-tabs,
+.decade-tabs {
+  row-gap: 14px;
 }
