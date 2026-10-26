@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Timer from '../components/Timer'
 import Celebration from '../components/Celebration'
+import ReviewList from '../components/ReviewList'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { stripReadings, vocabMatch } from '../lib/vocab'
 import { parsePicks, picksToText } from '../lib/sentence'
 import { SELF_RATINGS, isUnchanged, matchesModel, splitRewriteModel } from '../lib/rewrite'
-import type { AnswerDraft, AppUser, SelfRating, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
+import type { AnswerDraft, AppUser, Review, SelfRating, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
 
 const SECONDS_BY_TRACK: Record<Track, number> = { joshi: 30, sentence: 60, rewrite: 120, vocab: 60 }
 const ANSWERS_BY_TRACK: Record<Track, number> = { joshi: 1, sentence: 1, rewrite: 1, vocab: 5 }
@@ -80,6 +81,9 @@ export default function Exam({ user }: { user: AppUser }) {
   const [openDecade, setOpenDecade] = useState<number | null>(null)
   // 5日刻みの節目（通算5・10・15…）を達成した瞬間に花火演出を出す。表示中の通算日を保持。
   const [celebrateDay, setCelebrateDay] = useState<number | null>(null)
+  // 推敲の講評（問題ID → 講評）と、直近7日に講評が届いた日（日付の切り替えに印を付ける）。
+  const [reviews, setReviews] = useState<Record<string, Review[]>>({})
+  const [reviewDays, setReviewDays] = useState<number[]>([])
 
   const startRef = useRef(Date.now())
   // 最終問題の提出が始まったら多重実行を防ぐ（タイマー満了/Enter連打対策）。
@@ -92,11 +96,12 @@ export default function Exam({ user }: { user: AppUser }) {
   // 並列で読み込む。日付切替後にも呼ぶので useCallback で再利用する。
   const load = useCallback(async (day?: number) => {
     setStatus('loading')
-    const [today, navRes] = await Promise.all([
+    const [today, navRes, daysRes] = await Promise.all([
       day != null
         ? supabase.rpc('get_today_full', { p_day: day })
         : supabase.rpc('get_today_full'),
       supabase.rpc('get_demo_state'),
+      supabase.rpc('get_my_review_days'),
     ])
     if (today.error) {
       setStatus('error')
@@ -143,6 +148,18 @@ export default function Exam({ user }: { user: AppUser }) {
       if (done.length > 0) grouped[t] = done
     }
     setDoneResults(grouped)
+    setReviewDays((daysRes.data as number[] | null) ?? [])
+
+    // 提出済みの推敲があれば講評を取ってくる。
+    const rewriteIds = rows.filter((r) => r.track === 'rewrite' && r.submitted).map((r) => r.id)
+    const byQ: Record<string, Review[]> = {}
+    if (rewriteIds.length > 0) {
+      const { data } = await supabase.rpc('get_my_reviews', { p_question_ids: rewriteIds })
+      for (const rv of (data ?? []) as (Review & { question_id: string })[]) {
+        ;(byQ[rv.question_id] ??= []).push(rv)
+      }
+    }
+    setReviews(byQ)
     const nav = (navRes.data as NavState | null) ?? null
     setDemo(nav)
     // 初回ロード時は現在日を選択状態にする（切替時は呼び出し側で設定済み）。
@@ -215,6 +232,9 @@ export default function Exam({ user }: { user: AppUser }) {
   async function retrySet(t: Track) {
     const ids = setFor(t).map((q) => q.id)
     if (ids.length === 0) return
+    if (ids.some((id) => reviews[id]?.length) && !window.confirm('この日の講評も消えます。もう一度挑戦しますか？')) {
+      return
+    }
     setSubmitting(true)
     const { error } = await supabase.rpc('reset_set', { p_question_ids: ids })
     setSubmitting(false)
@@ -356,6 +376,7 @@ export default function Exam({ user }: { user: AppUser }) {
               onClick={() => switchDay(n)}
             >
               {n}日目
+              {reviewDays.includes(n) && <span className="day-tab__dot" title="新しい講評があります" />}
             </button>
           ))}
           {demo.demo_mode && (
@@ -406,6 +427,12 @@ export default function Exam({ user }: { user: AppUser }) {
 
         {allDone && (
           <div className="card notice">本日のトレーニングは完了しました。お疲れさまでした。</div>
+        )}
+
+        {Object.keys(reviews).length > 0 && (
+          <div className="card notice notice--review">
+            この日の推敲に講評が届いています。推敲トレーニングの「解答を見る」から確認できます。
+          </div>
         )}
 
         <div className="track-grid">
@@ -519,7 +546,7 @@ export default function Exam({ user }: { user: AppUser }) {
                 {r.track !== 'rewrite' && <p className="result__prompt">{r.prompt}</p>}
                 {r.track === 'rewrite' ? (
                   (() => {
-                    const { examples, point } = splitRewriteModel(r.model_answer)
+                    const { examples, point, criteria } = splitRewriteModel(r.model_answer)
                     return (
                       <>
                         <p className="result__row">
@@ -554,6 +581,16 @@ export default function Exam({ user }: { user: AppUser }) {
                             <span className="rewrite-point">{point}</span>
                           </p>
                         )}
+                        {criteria.length > 0 && (
+                          <div className="result__row">
+                            <span className="result__label">OKの条件</span>
+                            <ul className="rewrite-criteria">
+                              {criteria.map((c) => (
+                                <li key={c}>{c}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                         <div className="self-rate">
                           <span className="self-rate__label">自己採点</span>
                           <div className="self-rate__btns">
@@ -570,6 +607,7 @@ export default function Exam({ user }: { user: AppUser }) {
                             ))}
                           </div>
                         </div>
+                        <ReviewList reviews={reviews[r.question_id] ?? []} />
                       </>
                     )
                   })()

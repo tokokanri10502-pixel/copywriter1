@@ -1656,3 +1656,129 @@ h3 {
   font-size: 12px;
   font-weight: 400;
 }
+
+/* ---------- 推敲の講評（Claude の週次講評／上長の一言） ---------- */
+.rewrite-criteria {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-soft);
+}
+.rewrite-criteria li::before {
+  content: '□ ';
+  color: var(--rewrite);
+  font-weight: 700;
+}
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.review {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--card);
+}
+.review--claude {
+  border-color: #e3d3bd;
+  background: var(--rewrite-soft);
+}
+.review__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.review__who {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rewrite-dark);
+}
+.review--manager .review__who {
+  color: var(--primary);
+}
+.review__verdict {
+  padding: 1px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 999px;
+}
+.review__verdict--good {
+  background: var(--vocab);
+}
+.review__verdict--close {
+  background: var(--warn);
+}
+.review__verdict--miss {
+  background: var(--seal);
+}
+.review__date {
+  margin-left: auto;
+  font-family: var(--ui);
+  font-size: 11px;
+  color: var(--muted-2);
+}
+.review__comment {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+.review__suggestion {
+  margin: 6px 0 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.8;
+  color: var(--vocab-dark);
+}
+.review__suggestion-label {
+  margin-right: 8px;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-2);
+}
+.day-tab {
+  position: relative;
+}
+.day-tab__dot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rewrite);
+}
+.notice--review {
+  border-color: #e3d3bd;
+  background: var(--rewrite-soft);
+}
+.mgr-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rule-strong);
+}
+.mgr-review__input {
+  width: 100%;
+  resize: vertical;
+  line-height: 1.7;
+}
+.mgr-review__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

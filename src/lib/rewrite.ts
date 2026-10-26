@@ -2,12 +2,27 @@
 import type { SelfRating } from '../types'
 import { toHiragana } from './vocab'
 
-// model_answer（「模範例1／模範例2\n観点：…」）を模範例と観点に分ける。
-export function splitRewriteModel(model: string | null | undefined): { examples: string; point: string } {
-  if (!model) return { examples: '', point: '' }
-  const i = model.indexOf('観点：')
-  if (i < 0) return { examples: model.trim(), point: '' }
-  return { examples: model.slice(0, i).trim(), point: model.slice(i + '観点：'.length).trim() }
+// model_answer（「模範例1／模範例2」改行「観点：…」改行「OKの条件：条件1／条件2」）を
+// 模範例・観点・OKの条件に分ける。OKの条件は 2026-10-27 から（無い問題もある）。
+export function splitRewriteModel(model: string | null | undefined): {
+  examples: string
+  point: string
+  criteria: string[]
+} {
+  if (!model) return { examples: '', point: '', criteria: [] }
+  const ci = model.indexOf('OKの条件：')
+  const body = ci < 0 ? model : model.slice(0, ci)
+  const criteria =
+    ci < 0
+      ? []
+      : model
+          .slice(ci + 'OKの条件：'.length)
+          .split('／')
+          .map((x) => x.trim())
+          .filter(Boolean)
+  const i = body.indexOf('観点：')
+  if (i < 0) return { examples: body.trim(), point: '', criteria }
+  return { examples: body.slice(0, i).trim(), point: body.slice(i + '観点：'.length).trim(), criteria }
 }
 
 export const SELF_RATINGS: { value: SelfRating; mark: string; label: string }[] = [

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ReviewList from '../components/ReviewList'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import { stripReadings, vocabMatch } from '../lib/vocab'
 import { parsePicks } from '../lib/sentence'
 import { SELF_RATINGS, isUnchanged, matchesModel, selfRatingLabel, splitRewriteModel } from '../lib/rewrite'
-import type { AppUser, SelfRating, SentenceOption, Track } from '../types'
+import type { AppUser, Review, SelfRating, SentenceOption, Track } from '../types'
 
 interface QRow {
   id: string
@@ -38,6 +39,73 @@ interface ScRow {
   is_correct: boolean | null
 }
 
+type ReviewRow = Review & { submission_id: string }
+
+// 上長の一言（推敲）。◎△× と一言を保存する。両方空で保存すると削除。
+function ManagerReviewForm({
+  submissionId,
+  current,
+  onSaved,
+}: {
+  submissionId: string
+  current: Review | undefined
+  onSaved: () => void
+}) {
+  const [verdict, setVerdict] = useState<SelfRating | null>(current?.verdict ?? null)
+  const [comment, setComment] = useState(current?.comment ?? '')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  async function save() {
+    setSaving(true)
+    setMsg(null)
+    const { error } = await supabase.rpc('save_manager_review', {
+      p_submission_id: submissionId,
+      p_verdict: verdict,
+      p_comment: comment,
+    })
+    setSaving(false)
+    if (error) {
+      setMsg(`保存できませんでした：${error.message}`)
+      return
+    }
+    setMsg('保存しました')
+    onSaved()
+  }
+
+  return (
+    <div className="mgr-review">
+      <span className="self-rate__label">上長の一言（任意）</span>
+      <div className="self-rate__btns">
+        {SELF_RATINGS.map((x) => (
+          <button
+            key={x.value}
+            type="button"
+            className={'self-rate__btn self-rate__btn--' + x.value + (verdict === x.value ? ' is-on' : '')}
+            onClick={() => setVerdict(verdict === x.value ? null : x.value)}
+          >
+            <span className="self-rate__mark">{x.mark}</span>
+            {x.label}
+          </button>
+        ))}
+      </div>
+      <textarea
+        className="field__input mgr-review__input"
+        rows={2}
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="受講者への一言（例：主語をそろえられています。もう一歩短くできます）"
+      />
+      <div className="mgr-review__actions">
+        <button className="btn btn--primary" onClick={save} disabled={saving}>
+          {saving ? '保存中…' : '一言を保存'}
+        </button>
+        {msg && <span className="muted">{msg}</span>}
+      </div>
+    </div>
+  )
+}
+
 const TRACK_LABEL: Record<Track, string> = { joshi: '助詞', sentence: '文章', rewrite: '推敲', vocab: '語彙' }
 
 function todayStr(): string {
@@ -50,6 +118,7 @@ export default function Dashboard({ user }: { user: AppUser }) {
   const [questions, setQuestions] = useState<QRow[]>([])
   const [submissions, setSubmissions] = useState<SRow[]>([])
   const [scores, setScores] = useState<ScRow[]>([])
+  const [reviews, setReviews] = useState<ReviewRow[]>([])
   const [schedule, setSchedule] = useState<{ week: number; day: number; calendar_date: string; is_active: boolean }[]>([])
   const [loading, setLoading] = useState(true)
   const [lastSync, setLastSync] = useState<string>('')
@@ -57,18 +126,20 @@ export default function Dashboard({ user }: { user: AppUser }) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null) // 通算日番号 1〜10
 
   const reload = useCallback(async () => {
-    const [u, q, s, sc, sch] = await Promise.all([
+    const [u, q, s, sc, sch, rv] = await Promise.all([
       supabase.from('users').select('id, login_id, display_name, role').eq('role', 'trainee'),
       supabase.from('questions').select('id, track, week, day, order_no, prompt, context, target_word, model_answer, accepted_answers, weakness_tags, options'),
       supabase.from('submissions').select('id, user_id, question_id, answer_text, elapsed_ms, is_timeout, self_rating'),
       supabase.from('scores').select('submission_id, is_correct'),
       supabase.from('schedule').select('week, day, calendar_date, is_active'),
+      supabase.from('reviews').select('submission_id, reviewer, reviewer_name, verdict, comment, suggestion, created_at'),
     ])
     setTrainees((u.data as AppUser[]) ?? [])
     setQuestions((q.data as QRow[]) ?? [])
     setSubmissions((s.data as SRow[]) ?? [])
     setScores((sc.data as ScRow[]) ?? [])
     setSchedule((sch.data as typeof schedule) ?? [])
+    setReviews((rv.data as ReviewRow[]) ?? [])
     const now = new Date()
     setLastSync(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
     setLoading(false)
@@ -88,6 +159,11 @@ export default function Dashboard({ user }: { user: AppUser }) {
 
   const qById = useMemo(() => new Map(questions.map((q) => [q.id, q])), [questions])
   const scBySub = useMemo(() => new Map(scores.map((s) => [s.submission_id, s.is_correct])), [scores])
+  const reviewsBySub = useMemo(() => {
+    const m = new Map<string, ReviewRow[]>()
+    for (const r of reviews) m.set(r.submission_id, [...(m.get(r.submission_id) ?? []), r])
+    return m
+  }, [reviews])
 
   const stats = useMemo(() => {
     const today = todayStr()
@@ -126,6 +202,12 @@ export default function Dashboard({ user }: { user: AppUser }) {
         ...x,
         n: rewriteSubs.filter((s) => s.self_rating === x.value).length,
       }))
+      const claudeOf = (sid: string) => reviewsBySub.get(sid)?.find((r) => r.reviewer === 'claude')
+      const reviewedCount = rewriteSubs.filter((s) => claudeOf(s.id)).length
+      const reviewRating = SELF_RATINGS.map((x) => ({
+        ...x,
+        n: rewriteSubs.filter((s) => claudeOf(s.id)?.verdict === x.value).length,
+      }))
 
       const graded = autoSubs.map((s) => scBySub.get(s.id)).filter((v) => v === true || v === false)
       const correct = graded.filter((v) => v === true).length
@@ -146,13 +228,13 @@ export default function Dashboard({ user }: { user: AppUser }) {
       return {
         trainee: t,
         autoSubmitted: autoSubs.length, vocabSubmitted: vocabSubs.length,
-        rewriteSubmitted: rewriteSubs.length, rewriteRating,
+        rewriteSubmitted: rewriteSubs.length, rewriteRating, reviewedCount, reviewRating,
         availAuto: availByTrack.auto, availVocab: availByTrack.vocab,
         todaySubmitted: todaySubs.length, todayTotal,
         accuracy, correct, graded: graded.length, timeouts, avgSec, trend,
       }
     })
-  }, [trainees, questions, submissions, qById, scBySub, schedule])
+  }, [trainees, questions, submissions, qById, scBySub, schedule, reviewsBySub])
 
   const overallDay = (q: QRow) => (q.week - 1) * 5 + q.day
 
@@ -231,6 +313,13 @@ export default function Dashboard({ user }: { user: AppUser }) {
                     <span className="metric__value">
                       {row.rewriteRating.map((x) => `${x.mark}${x.n}`).join(' ')}
                       <span className="metric__unit"> （提出 {row.rewriteSubmitted}）</span>
+                    </span></div>
+                )}
+                {row.reviewedCount > 0 && (
+                  <div className="metric"><span className="metric__label">推敲 講評</span>
+                    <span className="metric__value">
+                      {row.reviewRating.map((x) => `${x.mark}${x.n}`).join(' ')}
+                      <span className="metric__unit"> （講評済 {row.reviewedCount}/{row.rewriteSubmitted}）</span>
                     </span></div>
                 )}
                 <div className="metric"><span className="metric__label">時間切れ</span><span className="metric__value">{row.timeouts} 件</span></div>
@@ -315,7 +404,8 @@ export default function Dashboard({ user }: { user: AppUser }) {
                   {q.track !== 'rewrite' && <p className="result__prompt">{q.prompt}</p>}
                   {q.track === 'rewrite' ? (
                     (() => {
-                      const { examples, point } = splitRewriteModel(q.model_answer)
+                      const { examples, point, criteria } = splitRewriteModel(q.model_answer)
+                      const subReviews = reviewsBySub.get(sub.id) ?? []
                       return (
                         <>
                           <p className="result__row"><span className="result__label">元の文</span><span className="rewrite-src">{q.prompt}</span></p>
@@ -326,6 +416,17 @@ export default function Dashboard({ user }: { user: AppUser }) {
                           )}
                           {examples && <p className="result__row"><span className="result__label">模範例</span><span className="rewrite-model">{examples}</span></p>}
                           {point && <p className="result__row"><span className="result__label">観点</span><span className="rewrite-point">{point}</span></p>}
+                          {criteria.length > 0 && (
+                            <div className="result__row"><span className="result__label">OKの条件</span>
+                              <ul className="rewrite-criteria">{criteria.map((c) => <li key={c}>{c}</li>)}</ul></div>
+                          )}
+                          <ReviewList reviews={subReviews} />
+                          <ManagerReviewForm
+                            key={sub.id + (subReviews.find((r) => r.reviewer === 'manager')?.created_at ?? '')}
+                            submissionId={sub.id}
+                            current={subReviews.find((r) => r.reviewer === 'manager')}
+                            onSaved={reload}
+                          />
                         </>
                       )
                     })()

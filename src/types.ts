@@ -72,3 +72,13 @@ export interface SetResult {
   options: SentenceOption[] | null // sentence: 提出後の選択肢（正誤・理由つき）
   self_rating?: SelfRating | null // rewrite: 自己採点
 }
+
+// 推敲の講評（Claude の週次講評 / 上長の一言）。verdict は自己採点と同じ3段階。
+export interface Review {
+  reviewer: 'claude' | 'manager'
+  reviewer_name: string | null
+  verdict: SelfRating | null
+  comment: string | null
+  suggestion: string | null
+  created_at: string
+}
