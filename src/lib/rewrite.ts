@@ -1,5 +1,6 @@
 // 推敲トラック（自由記述の書き直し）の小ヘルパー。
 import type { SelfRating } from '../types'
+import { toHiragana } from './vocab'
 
 // model_answer（「模範例1／模範例2\n観点：…」）を模範例と観点に分ける。
 export function splitRewriteModel(model: string | null | undefined): { examples: string; point: string } {
@@ -21,8 +22,9 @@ export const selfRatingLabel = (r: SelfRating | null | undefined) => {
 }
 
 // 比較用に、空白・かぎかっこ・文末の句点を取り除く。
+// カタカナ/ひらがな・全角/半角の違いもそろえる。
 const normalizeSentence = (s: string) =>
-  s.replace(/[\s　「」『』]/g, '').replace(/[。．.]+$/, '')
+  toHiragana(s).replace(/[\s　「」『』]/g, '').replace(/[。．.]+$/, '')
 
 // 書き直した文が模範例のどれかと（表記の細部を除いて）完全一致するか。
 export function matchesModel(answer: string | null | undefined, examples: string): boolean {

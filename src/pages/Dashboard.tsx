@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
-import { vocabMatch } from '../lib/vocab'
+import { stripReadings, vocabMatch } from '../lib/vocab'
 import { parsePicks } from '../lib/sentence'
 import { SELF_RATINGS, isUnchanged, matchesModel, selfRatingLabel, splitRewriteModel } from '../lib/rewrite'
 import type { AppUser, SelfRating, SentenceOption, Track } from '../types'
@@ -320,8 +320,8 @@ export default function Dashboard({ user }: { user: AppUser }) {
                         <>
                           <p className="result__row"><span className="result__label">元の文</span><span className="rewrite-src">{q.prompt}</span></p>
                           <p className="result__row"><span className="result__label">本人の文</span>
-                            <span className="rewrite-yours">{sub.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : !sub.answer_text || isUnchanged(sub.answer_text, q.prompt) ? <em className="muted">（書き直しなし）</em> : sub.answer_text}</span></p>
-                          {!sub.is_timeout && matchesModel(sub.answer_text, examples) && (
+                            <span className="rewrite-yours">{!sub.answer_text || isUnchanged(sub.answer_text, q.prompt) ? <em className="muted">{sub.is_timeout ? '（時間切れ・未回答）' : '（書き直しなし）'}</em> : <>{sub.answer_text}{sub.is_timeout && <em className="muted timeout-note">（時間切れ・入力途中を保存）</em>}</>}</span></p>
+                          {matchesModel(sub.answer_text, examples) && (
                             <p className="rewrite-match">○ 模範例と一致しています</p>
                           )}
                           {examples && <p className="result__row"><span className="result__label">模範例</span><span className="rewrite-model">{examples}</span></p>}
@@ -347,21 +347,21 @@ export default function Dashboard({ user }: { user: AppUser }) {
                   ) : (
                   <p className="result__row">
                     <span className="result__label">本人の解答</span>
-                    <span>{sub.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : sub.answer_text || <em className="muted">（空欄）</em>}</span>
+                    <span>{sub.answer_text ? <>{sub.answer_text}{sub.is_timeout && <em className="muted timeout-note">（時間切れ・入力途中を保存）</em>}</> : <em className="muted">{sub.is_timeout ? '（時間切れ・未回答）' : '（空欄）'}</em>}</span>
                   </p>
                   )}
-                  {q.track === 'vocab' && !sub.is_timeout && (() => {
+                  {q.track === 'vocab' && (() => {
                     const m = vocabMatch(sub.answer_text, q.model_answer)
-                    if (m.total === 0) return null
+                    if (m.matched === 0) return null
                     return (
-                      <p className="vocab-match">あなたの {m.total} 語のうち <strong>{m.matched}</strong> 語が模範例と一致{m.matched > 0 ? ' 🎉' : ''}</p>
+                      <p className="vocab-match">模範例と近い語：<strong>{m.matched}</strong> 語（{m.total} 語中）</p>
                     )
                   })()}
                   {q.track === 'joshi' && q.accepted_answers?.length > 0 && (
                     <p className="result__row"><span className="result__label">正解</span><span className="ans-joshi">{q.accepted_answers.join(' / ')}</span></p>
                   )}
                   {q.model_answer && q.track !== 'rewrite' && (
-                    <p className="result__row"><span className="result__label">{q.track === 'vocab' ? '模範解答例' : '解説'}</span><span className={q.track === 'vocab' ? 'ans-vocab' : ''}>{q.model_answer}</span></p>
+                    <p className="result__row"><span className="result__label">{q.track === 'vocab' ? '模範解答例' : '解説'}</span><span className={q.track === 'vocab' ? 'ans-vocab' : ''}>{q.track === 'vocab' ? stripReadings(q.model_answer) : q.model_answer}</span></p>
                   )}
                 </li>
               ))}

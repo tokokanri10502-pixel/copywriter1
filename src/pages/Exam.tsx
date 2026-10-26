@@ -4,7 +4,7 @@ import Timer from '../components/Timer'
 import Celebration from '../components/Celebration'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
-import { vocabMatch } from '../lib/vocab'
+import { stripReadings, vocabMatch } from '../lib/vocab'
 import { parsePicks, picksToText } from '../lib/sentence'
 import { SELF_RATINGS, isUnchanged, matchesModel, splitRewriteModel } from '../lib/rewrite'
 import type { AnswerDraft, AppUser, SelfRating, SetResult, TodayFullRow, TodayQuestion, Track } from '../types'
@@ -39,6 +39,11 @@ interface NavState {
   demo_mode: boolean
   current: number | null
   available: number[]
+}
+
+// 時間切れでも入力内容を保存したことを添える小さな注記。
+function TimeoutNote() {
+  return <em className="muted timeout-note">（時間切れ・入力途中を保存）</em>
 }
 
 function ExamHeader({ name, onLogout }: { name: string; onLogout: () => void }) {
@@ -277,9 +282,10 @@ export default function Exam({ user }: { user: AppUser }) {
       track === 'sentence' ? picksToText(picked) : inputs.map((s) => s.trim()).filter(Boolean).join('、')
     // 推敲で元の文のまま提出した場合は「書き直しなし」（空の解答）として記録する。
     const answerText = track === 'rewrite' && isUnchanged(joined, current.prompt) ? '' : joined
+    // 時間切れでも、その時点で入力・選択していた内容は保存する（採点もその内容で行う）。
     const draft: AnswerDraft = {
       question_id: current.id,
-      answer_text: timedOut ? '' : answerText,
+      answer_text: answerText,
       elapsed_ms: Date.now() - startRef.current,
       is_timeout: timedOut,
     }
@@ -523,16 +529,17 @@ export default function Exam({ user }: { user: AppUser }) {
                         <p className="result__row">
                           <span className="result__label">あなたの文</span>
                           <span className="rewrite-yours">
-                            {r.is_timeout ? (
-                              <em className="muted">（時間切れ・未回答）</em>
-                            ) : !r.your_answer || isUnchanged(r.your_answer, r.prompt) ? (
-                              <em className="muted">（書き直しなし）</em>
+                            {!r.your_answer || isUnchanged(r.your_answer, r.prompt) ? (
+                              <em className="muted">{r.is_timeout ? '（時間切れ・未回答）' : '（書き直しなし）'}</em>
                             ) : (
-                              r.your_answer
+                              <>
+                                {r.your_answer}
+                                {r.is_timeout && <TimeoutNote />}
+                              </>
                             )}
                           </span>
                         </p>
-                        {!r.is_timeout && matchesModel(r.your_answer, examples) && (
+                        {matchesModel(r.your_answer, examples) && (
                           <p className="rewrite-match">○ 模範例と一致しています</p>
                         )}
                         {examples && (
@@ -571,12 +578,13 @@ export default function Exam({ user }: { user: AppUser }) {
                     <p className="result__row">
                       <span className="result__label">選んだ文</span>
                       <span>
-                        {r.is_timeout ? (
-                          <em className="muted">（時間切れ・未選択）</em>
-                        ) : parsePicks(r.your_answer).length > 0 ? (
-                          parsePicks(r.your_answer).map((n) => `${n}番`).join('・')
+                        {parsePicks(r.your_answer).length > 0 ? (
+                          <>
+                            {parsePicks(r.your_answer).map((n) => `${n}番`).join('・')}
+                            {r.is_timeout && <TimeoutNote />}
+                          </>
                         ) : (
-                          <em className="muted">（未選択）</em>
+                          <em className="muted">{r.is_timeout ? '（時間切れ・未選択）' : '（未選択）'}</em>
                         )}
                       </span>
                     </p>
@@ -606,16 +614,23 @@ export default function Exam({ user }: { user: AppUser }) {
                     <p className="result__row">
                       <span className="result__label">あなたの解答</span>
                       <span>
-                        {r.is_timeout ? <em className="muted">（時間切れ・未回答）</em> : r.your_answer || <em className="muted">（空欄）</em>}
+                        {r.your_answer ? (
+                          <>
+                            {r.your_answer}
+                            {r.is_timeout && <TimeoutNote />}
+                          </>
+                        ) : (
+                          <em className="muted">{r.is_timeout ? '（時間切れ・未回答）' : '（空欄）'}</em>
+                        )}
                       </span>
                     </p>
-                    {r.track === 'vocab' && !r.is_timeout && (() => {
+                    {r.track === 'vocab' && (() => {
+                      // 近い語があったときだけ伝える（一致しなかった語には印を付けない）。
                       const m = vocabMatch(r.your_answer, r.model_answer)
-                      if (m.total === 0) return null
+                      if (m.matched === 0) return null
                       return (
                         <p className="vocab-match">
-                          あなたの {m.total} 語のうち <strong>{m.matched}</strong> 語が模範例と一致しました
-                          {m.matched > 0 ? ' 🎉 いいね！' : ''}
+                          模範例と近い語：<strong>{m.matched}</strong> 語 🎉
                         </p>
                       )
                     })()}
@@ -628,7 +643,9 @@ export default function Exam({ user }: { user: AppUser }) {
                     {r.model_answer && (
                       <p className="result__row">
                         <span className="result__label">{r.track === 'vocab' ? '模範解答例' : '解説'}</span>
-                        <span className={r.track === 'vocab' ? 'ans-vocab' : ''}>{r.model_answer}</span>
+                        <span className={r.track === 'vocab' ? 'ans-vocab' : ''}>
+                          {r.track === 'vocab' ? stripReadings(r.model_answer) : r.model_answer}
+                        </span>
                       </p>
                     )}
                   </>

@@ -1649,3 +1649,10 @@ h3 {
 .self-rate__btn--miss.is-on {
   background: var(--seal);
 }
+
+/* 時間切れでも入力途中を保存したことを添える注記 */
+.timeout-note {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 400;
+}
