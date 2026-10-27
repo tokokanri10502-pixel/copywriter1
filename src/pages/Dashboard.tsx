@@ -108,6 +108,27 @@ function ManagerReviewForm({
 
 const TRACK_LABEL: Record<Track, string> = { joshi: '助詞', sentence: '文章', rewrite: '推敲', vocab: '語彙' }
 
+// Supabase は1回の取得で最大1000行までしか返さない。受講者が増えると提出が1000行を超えるので、
+// 1000行ずつ区切って最後まで取得する（id 順で安定させる）。
+const PAGE = 1000
+async function fetchAll(
+  table: string,
+  columns: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filter?: (b: any) => any,
+): Promise<Record<string, unknown>[]> {
+  const all: Record<string, unknown>[] = []
+  for (let from = 0; ; from += PAGE) {
+    let b = supabase.from(table).select(columns).order('id').range(from, from + PAGE - 1)
+    if (filter) b = filter(b)
+    const { data, error } = await b
+    if (error || !data) break
+    all.push(...(data as unknown as Record<string, unknown>[]))
+    if (data.length < PAGE) break
+  }
+  return all
+}
+
 function todayStr(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -127,19 +148,19 @@ export default function Dashboard({ user }: { user: AppUser }) {
 
   const reload = useCallback(async () => {
     const [u, q, s, sc, sch, rv] = await Promise.all([
-      supabase.from('users').select('id, login_id, display_name, role').eq('role', 'trainee'),
-      supabase.from('questions').select('id, track, week, day, order_no, prompt, context, target_word, model_answer, accepted_answers, weakness_tags, options'),
-      supabase.from('submissions').select('id, user_id, question_id, answer_text, elapsed_ms, is_timeout, self_rating'),
-      supabase.from('scores').select('submission_id, is_correct'),
-      supabase.from('schedule').select('week, day, calendar_date, is_active'),
-      supabase.from('reviews').select('submission_id, reviewer, reviewer_name, verdict, comment, suggestion, created_at'),
+      fetchAll('users', 'id, login_id, display_name, role', (b) => b.eq('role', 'trainee')),
+      fetchAll('questions', 'id, track, week, day, order_no, prompt, context, target_word, model_answer, accepted_answers, weakness_tags, options'),
+      fetchAll('submissions', 'id, user_id, question_id, answer_text, elapsed_ms, is_timeout, self_rating'),
+      fetchAll('scores', 'submission_id, is_correct'),
+      fetchAll('schedule', 'week, day, calendar_date, is_active'),
+      fetchAll('reviews', 'submission_id, reviewer, reviewer_name, verdict, comment, suggestion, created_at'),
     ])
-    setTrainees((u.data as AppUser[]) ?? [])
-    setQuestions((q.data as QRow[]) ?? [])
-    setSubmissions((s.data as SRow[]) ?? [])
-    setScores((sc.data as ScRow[]) ?? [])
-    setSchedule((sch.data as typeof schedule) ?? [])
-    setReviews((rv.data as ReviewRow[]) ?? [])
+    setTrainees(u as unknown as AppUser[])
+    setQuestions(q as unknown as QRow[])
+    setSubmissions(s as unknown as SRow[])
+    setScores(sc as unknown as ScRow[])
+    setSchedule(sch as unknown as typeof schedule)
+    setReviews(rv as unknown as ReviewRow[])
     const now = new Date()
     setLastSync(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
     setLoading(false)
